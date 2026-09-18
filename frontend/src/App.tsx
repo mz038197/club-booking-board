@@ -56,7 +56,7 @@ export default function App() {
   const [debugWho, setDebugWho] = useState('第三組')
   const [debugSlotId, setDebugSlotId] = useState('')
   const [debugError, setDebugError] = useState<string | null>(null)
-  const [viewMonth, setViewMonth] = useState<YearMonth | null>(null)
+  const [viewMonth, setViewMonth] = useState<YearMonth>(() => landingYearMonth([], new Date()))
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showTimetable, setShowTimetable] = useState(false)
   const landedKeyRef = useRef<string | null>(null)
@@ -217,18 +217,16 @@ export default function App() {
 
       {loadError ? <p className="banner error">看板載入失敗：{loadError}</p> : null}
 
-      {viewMonth ? (
-        <CalendarBoard
-          slots={slots}
-          yearMonth={viewMonth}
-          onYearMonthChange={(next) => {
-            setViewMonth(next)
-            setSelectedDate(null)
-          }}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-        />
-      ) : null}
+      <CalendarBoard
+        slots={slots}
+        yearMonth={viewMonth}
+        onYearMonthChange={(next) => {
+          setViewMonth(next)
+          setSelectedDate(null)
+        }}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
 
       <p className="timetable-toggle-row">
         <button type="button" className="btn" onClick={() => setShowTimetable((open) => !open)}>

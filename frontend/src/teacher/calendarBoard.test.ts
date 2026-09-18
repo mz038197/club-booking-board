@@ -81,9 +81,34 @@ describe('buildCalendarMonth', () => {
       chips: [
         { room: '301', status: 'open' },
         { room: '302', status: 'booked' },
-        { room: '301', status: 'open' },
       ],
     })
+  })
+
+  it('uses one room chip per classroom and mixed status when that room is both open and booked', () => {
+    const mixed: BoardSlot[] = [
+      {
+        slot_id: '2026-09-10_09:00-11:00_301',
+        date: '2026-09-10',
+        start: '09:00',
+        end: '11:00',
+        room: '301',
+        status: 'open',
+      },
+      {
+        slot_id: '2026-09-10_13:00-15:00_301',
+        date: '2026-09-10',
+        start: '13:00',
+        end: '15:00',
+        room: '301',
+        status: 'booked',
+        booked_by: '第一組',
+      },
+    ]
+    const month = buildCalendarMonth(mixed, { year: 2026, month: 9 })
+    expect(month.days.find((day) => day.date === '2026-09-10')?.chips).toEqual([
+      { room: '301', status: 'mixed' },
+    ])
   })
 
   it('does not include slots from other months', () => {

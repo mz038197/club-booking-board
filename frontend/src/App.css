@@ -359,12 +359,31 @@ select {
 
 .room-chip.open {
   opacity: 1;
-  border: 2px solid rgba(255, 255, 255, 0.95);
+  border: 3px solid #f4f1e8;
 }
 
 .room-chip.booked {
-  opacity: 0.5;
-  border: 2px dashed rgba(255, 255, 255, 0.95);
+  opacity: 0.72;
+  border: 3px dashed #f4f1e8;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.38) 3px,
+    rgba(0, 0, 0, 0.38) 6px
+  );
+}
+
+.room-chip.mixed {
+  opacity: 0.88;
+  border: 3px dotted #f4f1e8;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 5px,
+    rgba(0, 0, 0, 0.22) 5px,
+    rgba(0, 0, 0, 0.22) 7px
+  );
 }
 
 .chip-more {

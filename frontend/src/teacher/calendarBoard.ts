@@ -1,13 +1,16 @@
 import type { BoardSlot, SlotStatus } from '../api/types.ts'
+import { compareRooms } from '../board/groupSlots.ts'
 
 export type YearMonth = {
   year: number
   month: number
 }
 
+export type ChipStatus = SlotStatus | 'mixed'
+
 export type RoomChip = {
   room: string
-  status: SlotStatus
+  status: ChipStatus
 }
 
 export type CalendarDayCell = {
@@ -41,7 +44,7 @@ export function landingYearMonth(slots: BoardSlot[], today: Date): YearMonth {
   return yearMonthFromIsoDate(earliest)
 }
 
-export function yearMonthFromIsoDate(isoDate: string): YearMonth {
+function yearMonthFromIsoDate(isoDate: string): YearMonth {
   const [year, month] = isoDate.split('-').map(Number)
   return { year, month }
 }
@@ -57,7 +60,7 @@ export function shiftYearMonth(yearMonth: YearMonth, delta: number): YearMonth {
   return { year, month }
 }
 
-export function daysInMonth(yearMonth: YearMonth): number {
+function daysInMonth(yearMonth: YearMonth): number {
   return new Date(yearMonth.year, yearMonth.month, 0).getDate()
 }
 
@@ -76,6 +79,25 @@ function slotsOnDate(slots: BoardSlot[], date: string): BoardSlot[] {
     )
 }
 
+function roomChipsForDay(onDay: BoardSlot[]): RoomChip[] {
+  const order: string[] = []
+  const statuses = new Map<string, Set<SlotStatus>>()
+  for (const slot of onDay) {
+    if (!statuses.has(slot.room)) {
+      order.push(slot.room)
+      statuses.set(slot.room, new Set())
+    }
+    statuses.get(slot.room)?.add(slot.status)
+  }
+  return order.map((room) => {
+    const found = statuses.get(room) ?? new Set<SlotStatus>()
+    const hasOpen = found.has('open')
+    const hasBooked = found.has('booked')
+    const status: ChipStatus = hasOpen && hasBooked ? 'mixed' : hasBooked ? 'booked' : 'open'
+    return { room, status }
+  })
+}
+
 export function buildCalendarMonth(slots: BoardSlot[], yearMonth: YearMonth): CalendarMonth {
   const lastDay = daysInMonth(yearMonth)
   const days: CalendarDayCell[] = []
@@ -87,20 +109,17 @@ export function buildCalendarMonth(slots: BoardSlot[], yearMonth: YearMonth): Ca
       hasSlots: onDay.length > 0,
       openCount: onDay.filter((slot) => slot.status === 'open').length,
       bookedCount: onDay.filter((slot) => slot.status === 'booked').length,
-      chips: onDay.map((slot) => ({ room: slot.room, status: slot.status })),
+      chips: roomChipsForDay(onDay),
     })
   }
   return { yearMonth, days }
 }
 
-export function visibleRoomChips(
-  chips: RoomChip[],
-  max = CHIP_VISIBLE_MAX,
-): { chips: RoomChip[]; overflow: number } {
-  if (chips.length <= max) {
+export function visibleRoomChips(chips: RoomChip[]): { chips: RoomChip[]; overflow: number } {
+  if (chips.length <= CHIP_VISIBLE_MAX) {
     return { chips, overflow: 0 }
   }
-  return { chips: chips.slice(0, max), overflow: chips.length - max }
+  return { chips: chips.slice(0, CHIP_VISIBLE_MAX), overflow: chips.length - CHIP_VISIBLE_MAX }
 }
 
 export function dayExpandSlots(slots: BoardSlot[], date: string): DayExpandSlot[] {
@@ -113,26 +132,37 @@ export function dayExpandSlots(slots: BoardSlot[], date: string): DayExpandSlot[
   }))
 }
 
-const ROOM_COLORS = [
-  '#3d7ea6',
-  '#6b5ea8',
-  '#2a9d8f',
-  '#c17f3a',
-  '#b85c7a',
-  '#4a8f4f',
-  '#8a6d3b',
-  '#5c7c99',
-]
-
-export function roomChipColor(room: string): string {
-  let hash = 0
-  for (let i = 0; i < room.length; i += 1) {
-    hash = (hash * 31 + room.charCodeAt(i)) >>> 0
-  }
-  return ROOM_COLORS[hash % ROOM_COLORS.length]
+export function slotStatusLabel(status: SlotStatus): string {
+  return status === 'booked' ? '已借' : '可借'
 }
 
-export function weekdayIndexSundayFirst(iso: string): number {
-  const [year, month, day] = iso.split('-').map(Number)
+export function chipStatusLabel(status: ChipStatus): string {
+  if (status === 'mixed') return '可借與已借'
+  return slotStatusLabel(status)
+}
+
+const ROOM_PALETTE = [
+  '#3d7ea6',
+  '#6b5ea8',
+  '#1a7a8c',
+  '#b85c7a',
+  '#4c6e91',
+  '#8b5ea8',
+  '#2f6f8f',
+  '#7a5c4a',
+]
+
+export function roomsOnBoard(slots: BoardSlot[]): string[] {
+  return [...new Set(slots.map((slot) => slot.room))].sort(compareRooms)
+}
+
+export function roomChipColor(room: string, boardRooms: readonly string[]): string {
+  const index = boardRooms.indexOf(room)
+  const safe = index === -1 ? 0 : index
+  return ROOM_PALETTE[safe % ROOM_PALETTE.length]
+}
+
+export function weekdayIndexSundayFirst(date: string): number {
+  const [year, month, day] = date.split('-').map(Number)
   return new Date(year, month - 1, day).getDay()
 }

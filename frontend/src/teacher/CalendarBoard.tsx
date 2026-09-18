@@ -1,10 +1,13 @@
 import type { BoardSlot } from '../api/types.ts'
 import {
   buildCalendarMonth,
+  chipStatusLabel,
   dayExpandSlots,
   formatYearMonth,
   roomChipColor,
+  roomsOnBoard,
   shiftYearMonth,
+  slotStatusLabel,
   visibleRoomChips,
   weekdayIndexSundayFirst,
   type YearMonth,
@@ -30,6 +33,7 @@ export function CalendarBoard({
   const month = buildCalendarMonth(slots, yearMonth)
   const leadingBlanks = weekdayIndexSundayFirst(month.days[0].date)
   const expanded = selectedDate ? dayExpandSlots(slots, selectedDate) : []
+  const boardRooms = roomsOnBoard(slots)
 
   return (
     <section className="calendar-board" aria-label="月曆監看">
@@ -79,19 +83,17 @@ export function CalendarBoard({
                 onClick={() => onSelectDate(day.date)}
               >
                 <span className="day-num">{Number(day.date.slice(-2))}</span>
-                {day.hasSlots ? (
-                  <span className="day-counts">
-                    可借 {day.openCount}／已借 {day.bookedCount}
-                  </span>
-                ) : null}
+                <span className="day-counts">
+                  可借 {day.openCount}／已借 {day.bookedCount}
+                </span>
                 {day.hasSlots ? (
                   <span className="chip-row">
                     {shown.chips.map((chip, index) => (
                       <span
                         key={`${day.date}-${chip.room}-${chip.status}-${index}`}
                         className={`room-chip ${chip.status}`}
-                        style={{ backgroundColor: roomChipColor(chip.room) }}
-                        title={`教室 ${chip.room}（${chip.status === 'booked' ? '已借' : '可借'}）`}
+                        style={{ backgroundColor: roomChipColor(chip.room, boardRooms) }}
+                        title={`教室 ${chip.room}（${chipStatusLabel(chip.status)}）`}
                       >
                         {chip.room}
                       </span>
@@ -119,13 +121,11 @@ export function CalendarBoard({
                       </span>
                       <span
                         className={`room-chip ${slot.status}`}
-                        style={{ backgroundColor: roomChipColor(slot.room) }}
+                        style={{ backgroundColor: roomChipColor(slot.room, boardRooms) }}
                       >
                         {slot.room}
                       </span>
-                      <span className={`expand-status ${slot.status}`}>
-                        {slot.status === 'booked' ? '已借' : '可借'}
-                      </span>
+                      <span className={`expand-status ${slot.status}`}>{slotStatusLabel(slot.status)}</span>
                       {slot.status === 'booked' ? (
                         <span className="expand-who">{slot.booked_by ?? '（未標示預約者）'}</span>
                       ) : null}

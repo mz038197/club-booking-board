@@ -49,47 +49,57 @@ def create_app(db_path: str = "booking.db") -> FastAPI:
                 "room": slot.room,
             }
 
-        booked = {
-            row["slot_id"]
-            for row in conn.execute(
-                "SELECT slot_id FROM bookings WHERE session_id = ?",
-                (session_id,),
-            )
-        }
-        existing = [
-            row["slot_id"]
-            for row in conn.execute(
-                "SELECT slot_id FROM slots WHERE session_id = ?",
-                (session_id,),
-            )
-        ]
-
-        for slot_id in existing:
-            if slot_id not in incoming:
-                if slot_id in booked:
-                    raise ApiError(
-                        409,
-                        "CONFLICT",
-                        "Cannot remove a slot that is already booked",
-                    )
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            booked = {
+                row["slot_id"]
+                for row in conn.execute(
+                    "SELECT slot_id FROM bookings WHERE session_id = ?",
+                    (session_id,),
+                )
+            }
+            existing = [
+                row["slot_id"]
+                for row in conn.execute(
+                    "SELECT slot_id FROM slots WHERE session_id = ?",
+                    (session_id,),
+                )
+            ]
+            to_remove = [slot_id for slot_id in existing if slot_id not in incoming]
+            if any(slot_id in booked for slot_id in to_remove):
+                raise ApiError(
+                    409,
+                    "CONFLICT",
+                    "Cannot remove a slot that is already booked",
+                )
+            for slot_id in to_remove:
                 conn.execute(
                     "DELETE FROM slots WHERE session_id = ? AND slot_id = ?",
                     (session_id, slot_id),
                 )
-
-        for slot_id, slot in incoming.items():
-            conn.execute(
-                """
-                INSERT INTO slots (session_id, slot_id, date, start, end, room)
-                VALUES (:session_id, :slot_id, :date, :start, :end, :room)
-                ON CONFLICT (session_id, slot_id) DO UPDATE SET
-                    date = excluded.date,
-                    start = excluded.start,
-                    end = excluded.end,
-                    room = excluded.room
-                """,
-                {"session_id": session_id, **slot},
-            )
+            for slot in incoming.values():
+                conn.execute(
+                    """
+                    INSERT INTO slots (session_id, slot_id, date, start, end, room)
+                    VALUES (:session_id, :slot_id, :date, :start, :end, :room)
+                    ON CONFLICT (session_id, slot_id) DO NOTHING
+                    """,
+                    {"session_id": session_id, **slot},
+                )
+            conn.execute("COMMIT")
+        except ApiError:
+            conn.execute("ROLLBACK")
+            raise
+        except sqlite3.IntegrityError:
+            conn.execute("ROLLBACK")
+            raise ApiError(
+                409,
+                "CONFLICT",
+                "Cannot remove a slot that is already booked",
+            ) from None
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
 
         return {"slots": list(incoming.values())}
 
@@ -148,9 +158,11 @@ def create_app(db_path: str = "booking.db") -> FastAPI:
                 (booking_id, session_id, body.slot_id, body.student_id),
             )
             conn.execute("COMMIT")
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as exc:
             conn.execute("ROLLBACK")
-            raise ApiError(409, "SLOT_TAKEN", "This slot is already booked") from None
+            if "UNIQUE" in str(exc):
+                raise ApiError(409, "SLOT_TAKEN", "This slot is already booked") from None
+            raise ApiError(400, "INVALID_SLOT", "Slot is not offered for this session") from None
         except Exception:
             conn.execute("ROLLBACK")
             raise
@@ -165,7 +177,7 @@ def create_app(db_path: str = "booking.db") -> FastAPI:
     def cancel_booking(
         session_id: str,
         booking_id: str,
-        student_id: str = Query(..., description="Owner student id"),
+        student_id: str | None = Query(None, description="Owner student id"),
         conn: sqlite3.Connection = Depends(get_conn),
     ) -> None:
         row = conn.execute(
@@ -177,7 +189,7 @@ def create_app(db_path: str = "booking.db") -> FastAPI:
         ).fetchone()
         if row is None:
             raise ApiError(404, "NOT_FOUND", "Booking does not exist")
-        if row["student_id"] != student_id:
+        if not student_id or row["student_id"] != student_id:
             raise ApiError(403, "NOT_OWNER", "Only the booking owner can cancel")
         conn.execute(
             "DELETE FROM bookings WHERE session_id = ? AND booking_id = ?",

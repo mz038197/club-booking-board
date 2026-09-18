@@ -26,10 +26,6 @@ class BoardSlot(BaseModel):
         return data
 
 
-class BoardResponse(BaseModel):
-    slots: list[BoardSlot]
-
-
 class BookingCreateRequest(BaseModel):
     slot_id: str
     student_id: str

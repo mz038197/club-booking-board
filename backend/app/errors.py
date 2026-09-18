@@ -25,12 +25,16 @@ def register_error_handlers(app) -> None:
     async def api_error_handler(_request: Request, exc: ApiError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
-            content=ErrorBody(code=exc.code, message=exc.message).model_dump(),
+            content=ErrorBody(code=exc.code, message=exc.message).model_dump(
+                exclude_none=True
+            ),
         )
 
     @app.exception_handler(RequestValidationError)
     async def validation_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
         return JSONResponse(
             status_code=400,
-            content=ErrorBody(code="INVALID_SLOT", message=str(exc)).model_dump(),
+            content=ErrorBody(code="INVALID_SLOT", message=str(exc)).model_dump(
+                exclude_none=True
+            ),
         )

@@ -17,7 +17,7 @@ OpenAPI: http://127.0.0.1:8000/docs
 ## Tests
 
 ```bash
-pip install -r backend/requirements.txt pytest httpx
+pip install -r backend/requirements-dev.txt
 python3 -m pytest
 ```
 

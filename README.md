@@ -6,4 +6,4 @@ This repo currently installs [Matt Pocock's engineering skills](https://github.c
 
 Skills live under `.agents/skills` (Cursor's project skill path from the skills CLI) and are locked in `skills-lock.json`.
 
-In your own Cursor session, run `/setup-matt-pocock-skills` once to configure issue tracking, triage labels, and domain docs. Do not treat this scaffold as a finished app.
+Agent skill config lives in `AGENTS.md` and `docs/agents/`. Do not treat this scaffold as a finished app.

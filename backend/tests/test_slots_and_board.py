@@ -9,6 +9,15 @@ SLOT = {
 SLOT_ID = "2026-09-25_13:00-15:00_301"
 
 
+def test_put_slots_invalid_shape_returns_invalid_slot(client):
+    response = client.put(
+        f"/sessions/{SESSION}/slots",
+        json={"slots": [{"date": "2026-09-25", "start": "13:00"}]},
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "INVALID_SLOT"
+
+
 def test_put_slots_then_board_lists_them_as_open(client):
     response = client.put(
         f"/sessions/{SESSION}/slots",

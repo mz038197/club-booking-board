@@ -69,7 +69,10 @@
 - 看板：`GET /sessions/{session_id}/board`
 - 預約：`POST /sessions/{session_id}/bookings`；取消：`DELETE` 該筆預約（僅本人）
 - 海報：`POST /poster/copy`（只出文案、不出圖）
-- 錯誤碼：`SLOT_TAKEN`、`NOT_OWNER`、`NOT_FOUND`、`INVALID_SLOT`、`CONFLICT`
+- 錯誤碼：`SLOT_TAKEN`、`NOT_OWNER`、`NOT_FOUND`、`INVALID_SLOT`、`INVALID_POSTER`、`INVALID_REQUEST`、`CONFLICT`
+  - `INVALID_SLOT`：格子格式／未知格子
+  - `INVALID_POSTER`：海報文案請求驗證失敗
+  - `INVALID_REQUEST`：其他請求驗證失敗
 - 併發：`UNIQUE (session_id, slot_id)` → `SLOT_TAKEN`
 
 ## 待決（非擋 v1 定稿）

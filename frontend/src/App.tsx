@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createHttpBoardApi, defaultApiBaseUrl, type BoardApi, type MockBoardApi } from './api/client.ts'
 import { formatApiError } from './api/errors.ts'
 import { createDemoMockApi, DEMO_SESSION_ID } from './api/mockApi.ts'
 import type { BoardSlot, SlotSpec } from './api/types.ts'
 import { BoardGrid } from './board/BoardGrid.tsx'
 import { formatSlotId } from './board/slotId.ts'
+import { CalendarBoard } from './teacher/CalendarBoard.tsx'
+import { landingYearMonth, type YearMonth } from './teacher/calendarBoard.ts'
 import { SlotEditor } from './teacher/SlotEditor.tsx'
 import './App.css'
 
@@ -54,6 +56,10 @@ export default function App() {
   const [debugWho, setDebugWho] = useState('第三組')
   const [debugSlotId, setDebugSlotId] = useState('')
   const [debugError, setDebugError] = useState<string | null>(null)
+  const [viewMonth, setViewMonth] = useState<YearMonth>(() => landingYearMonth([], new Date()))
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [showTimetable, setShowTimetable] = useState(false)
+  const landedKeyRef = useRef<string | null>(null)
 
   const mockApi = useMemo(() => createDemoMockApi(), [])
   const httpApi = useMemo(() => createHttpBoardApi(apiBaseUrl), [apiBaseUrl])
@@ -81,6 +87,12 @@ export default function App() {
         setSlots(board.slots)
         setUpdatedAt(new Date())
         setLoadError(null)
+        const landKey = `${useMock ? 'mock' : 'http'}:${sessionId}`
+        if (landedKeyRef.current !== landKey) {
+          landedKeyRef.current = landKey
+          setViewMonth(landingYearMonth(board.slots, new Date()))
+          setSelectedDate(null)
+        }
         setEditorSlots((current) => {
           if (dirty) return current
           return asSlotSpecs(board.slots)
@@ -99,7 +111,7 @@ export default function App() {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [api, sessionId, dirty])
+  }, [api, sessionId, dirty, useMock])
 
   function applySession(event: FormEvent) {
     event.preventDefault()
@@ -205,7 +217,23 @@ export default function App() {
 
       {loadError ? <p className="banner error">看板載入失敗：{loadError}</p> : null}
 
-      <BoardGrid slots={slots} />
+      <CalendarBoard
+        slots={slots}
+        yearMonth={viewMonth}
+        onYearMonthChange={(next) => {
+          setViewMonth(next)
+          setSelectedDate(null)
+        }}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
+
+      <p className="timetable-toggle-row">
+        <button type="button" className="btn" onClick={() => setShowTimetable((open) => !open)}>
+          {showTimetable ? '隱藏時間表看板' : '顯示時間表看板'}
+        </button>
+      </p>
+      {showTimetable ? <BoardGrid slots={slots} /> : null}
 
       <SlotEditor
         slots={editorSlots}

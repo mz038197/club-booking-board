@@ -25,6 +25,8 @@ uvicorn app.main:create_default_app --factory --app-dir backend --host 0.0.0.0 -
 
 OpenAPI: http://127.0.0.1:8000/docs
 
+CORS is limited to local frontend origins: `http://localhost:*` and `http://127.0.0.1:*` (Vite default `http://localhost:5173`). Other origins are not allowed.
+
 ## 教師看板
 
 ```bash

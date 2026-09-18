@@ -253,3 +253,178 @@ select {
   color: var(--accent);
   font-weight: 700;
 }
+
+.calendar-board {
+  margin: 0.5rem 0 1.25rem;
+}
+
+.calendar-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.85rem;
+}
+
+.calendar-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(16rem, 0.9fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.weekday {
+  text-align: center;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 0.35rem 0;
+}
+
+.day-cell {
+  min-height: 6.4rem;
+  border-radius: 0.7rem;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.day-cell.day-blank {
+  border: none;
+  background: transparent;
+  min-height: 0;
+  cursor: default;
+}
+
+.day-cell.no-slots {
+  background: #2a3542;
+  color: #8a97a8;
+}
+
+.day-cell.has-slots {
+  background: #1c2b3b;
+}
+
+.day-cell.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.day-num {
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+.day-counts {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: auto;
+}
+
+.room-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  padding: 0.12rem 0.28rem;
+  border-radius: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.room-chip.open {
+  opacity: 1;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+}
+
+.room-chip.booked {
+  opacity: 0.5;
+  border: 2px dashed rgba(255, 255, 255, 0.95);
+}
+
+.chip-more {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--muted);
+  align-self: center;
+}
+
+.day-expand {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+  min-height: 12rem;
+}
+
+.day-expand h3 {
+  margin-top: 0;
+}
+
+.expand-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.expand-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.expand-time {
+  font-weight: 700;
+}
+
+.expand-status.open {
+  color: #8ee0b8;
+  font-weight: 800;
+}
+
+.expand-status.booked {
+  color: #ffc29a;
+  font-weight: 800;
+}
+
+.timetable-toggle-row {
+  margin: 0 0 1rem;
+}
+
+@media (max-width: 900px) {
+  .calendar-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .day-cell {
+    min-height: 5.4rem;
+  }
+}

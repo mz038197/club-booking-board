@@ -6,6 +6,7 @@ import uuid
 from collections.abc import Generator
 
 from fastapi import Depends, FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import connect, init_db
 from app.errors import ApiError, register_error_handlers
@@ -19,10 +20,20 @@ from app.models import (
 )
 from app.slot_id import make_slot_id
 
+# Local Vite / frontend only (http://localhost:* and http://127.0.0.1:*).
+LOCAL_DEV_CORS_ORIGIN_REGEX = r"http://(localhost|127\.0\.0\.1)(:\d+)?"
+
 
 def create_app(db_path: str = "booking.db") -> FastAPI:
     init_db(db_path)
     app = FastAPI(title="Club classroom booking board")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=LOCAL_DEV_CORS_ORIGIN_REGEX,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     register_error_handlers(app)
 
     def get_conn() -> Generator[sqlite3.Connection, None, None]:

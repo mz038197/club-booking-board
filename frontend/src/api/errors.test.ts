@@ -8,6 +8,8 @@ describe('parseErrorBody', () => {
     expect(parseErrorBody({ code: 'NOT_OWNER' })).toBe('NOT_OWNER')
     expect(parseErrorBody({ code: 'NOT_FOUND' })).toBe('NOT_FOUND')
     expect(parseErrorBody({ code: 'INVALID_SLOT' })).toBe('INVALID_SLOT')
+    expect(parseErrorBody({ code: 'INVALID_POSTER' })).toBe('INVALID_POSTER')
+    expect(parseErrorBody({ code: 'INVALID_REQUEST' })).toBe('INVALID_REQUEST')
   })
 
   it('ignores unknown codes and non-objects', () => {

@@ -27,6 +27,8 @@ export type ApiErrorCode =
   | 'NOT_FOUND'
   | 'INVALID_SLOT'
   | 'CONFLICT'
+  | 'INVALID_POSTER'
+  | 'INVALID_REQUEST'
 
 export const API_ERROR_CODES: readonly ApiErrorCode[] = [
   'SLOT_TAKEN',
@@ -34,4 +36,6 @@ export const API_ERROR_CODES: readonly ApiErrorCode[] = [
   'NOT_FOUND',
   'INVALID_SLOT',
   'CONFLICT',
+  'INVALID_POSTER',
+  'INVALID_REQUEST',
 ]

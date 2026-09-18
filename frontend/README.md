@@ -32,6 +32,6 @@ Base URL：`VITE_API_BASE_URL`（例：`http://localhost:3000`）
 
 `slot_id`：`{date}_{start}-{end}_{room}`，例 `2026-09-25_13:00-15:00_301`。
 
-4xx 若帶 `code`（`SLOT_TAKEN` / `NOT_OWNER` / `NOT_FOUND` / `INVALID_SLOT` / `CONFLICT`）會顯示在畫面上。教師儲存若因移除已預約格而 `CONFLICT`，會有明確提示。
+4xx 若帶 `code`（`SLOT_TAKEN` / `NOT_OWNER` / `NOT_FOUND` / `INVALID_SLOT` / `CONFLICT` / `INVALID_POSTER` / `INVALID_REQUEST`）會被解析；看板對教師操作仍以 `CONFLICT` 等既有提示為主。教師儲存若因移除已預約格而 `CONFLICT`，會有明確提示。
 
 學生預約／取消／海報是 agent API，此頁不實作；本機模擬模式有小型除錯面板方便看格子變化。

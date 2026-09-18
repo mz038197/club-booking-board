@@ -42,6 +42,15 @@ def test_book_taken_slot_returns_slot_taken(client):
     assert response.json()["code"] == "SLOT_TAKEN"
 
 
+def test_book_missing_fields_returns_invalid_request(client):
+    response = client.post(
+        f"/sessions/{SESSION}/bookings",
+        json={"slot_id": SLOT_ID},
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "INVALID_REQUEST"
+
+
 def test_book_unknown_slot_returns_invalid_slot(client):
     response = client.post(
         f"/sessions/{SESSION}/bookings",

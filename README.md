@@ -16,6 +16,8 @@ OpenAPI: http://127.0.0.1:8000/docs
 
 ## Tests
 
+Install runtime deps plus test-only packages (`pytest`, `httpx`) via `backend/requirements-dev.txt` (includes `-r requirements.txt`). Production `requirements.txt` does not include pytest.
+
 ```bash
 pip install -r backend/requirements-dev.txt
 python3 -m pytest
@@ -35,4 +37,6 @@ Owner identity for cancel is query param `student_id`.
 
 `slot_id` format: `{date}_{start}-{end}_{room}` e.g. `2026-09-25_13:00-15:00_301`.
 
-4xx envelope: `{ "code": "SLOT_TAKEN" \| "NOT_OWNER" \| "NOT_FOUND" \| "INVALID_SLOT" \| "CONFLICT", "message"? }`.
+4xx envelope: `{ "code": "SLOT_TAKEN" \| "NOT_OWNER" \| "NOT_FOUND" \| "INVALID_SLOT" \| "INVALID_POSTER" \| "INVALID_REQUEST" \| "CONFLICT", "message"? }`.
+
+Validation: unknown / malformed slot → `INVALID_SLOT`; poster body → `INVALID_POSTER`; other request shape → `INVALID_REQUEST`. Race / booking codes (`SLOT_TAKEN`, `CONFLICT`, `NOT_OWNER`, `NOT_FOUND`) are unchanged.

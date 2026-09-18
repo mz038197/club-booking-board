@@ -1,3 +1,9 @@
+def test_poster_copy_validation_failure_returns_invalid_poster(client):
+    response = client.post("/poster/copy", json={"time": "9/25", "place": "301"})
+    assert response.status_code == 400
+    assert response.json()["code"] == "INVALID_POSTER"
+
+
 def test_poster_copy_returns_structured_text_only(client):
     response = client.post(
         "/poster/copy",

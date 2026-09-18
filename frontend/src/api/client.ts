@@ -1,5 +1,5 @@
 import { apiErrorFromResponse } from './errors.ts'
-import type { BoardResponse, SlotSpec } from './types.ts'
+import type { BoardResponse, ReplaceSlotsRequest, SlotSpec } from './types.ts'
 
 export type BoardApi = {
   getBoard: (sessionId: string) => Promise<BoardResponse>
@@ -38,7 +38,7 @@ export function createHttpBoardApi(baseUrl: string, fetchImpl: typeof fetch = fe
             Accept: 'application/json',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ slots }),
+          body: JSON.stringify({ slots } satisfies ReplaceSlotsRequest),
         },
       )
       if (!response.ok) {

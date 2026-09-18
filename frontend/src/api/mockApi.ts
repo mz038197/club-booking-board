@@ -7,7 +7,7 @@ function cloneSlots(slots: BoardSlot[]): BoardSlot[] {
   return slots.map((slot) => ({ ...slot }))
 }
 
-function identity(slot: SlotSpec): string {
+function slotIdentity(slot: SlotSpec): string {
   return slotKey(slot)
 }
 
@@ -35,17 +35,17 @@ export function createMockBoardApi(seed?: Record<string, BoardSlot[]>): MockBoar
 
     async replaceAvailableSlots(sessionId: string, next: SlotSpec[]): Promise<void> {
       const current = getSlots(sessionId)
-      const nextKeys = new Set(next.map(identity))
+      const nextKeys = new Set(next.map(slotIdentity))
       const bookedBeingRemoved = current.filter(
-        (slot) => slot.status === 'booked' && !nextKeys.has(identity(slot)),
+        (slot) => slot.status === 'booked' && !nextKeys.has(slotIdentity(slot)),
       )
       if (bookedBeingRemoved.length > 0) {
         throw new ApiError(409, 'CONFLICT', { code: 'CONFLICT' }, 'API error CONFLICT (409)')
       }
 
-      const previousByKey = new Map(current.map((slot) => [identity(slot), slot]))
+      const previousByKey = new Map(current.map((slot) => [slotIdentity(slot), slot]))
       const replaced: BoardSlot[] = next.map((spec) => {
-        const previous = previousByKey.get(identity(spec))
+        const previous = previousByKey.get(slotIdentity(spec))
         if (previous) {
           return { ...previous, ...spec, slot_id: formatSlotId(spec) }
         }

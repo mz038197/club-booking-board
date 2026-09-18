@@ -4,6 +4,7 @@ import { formatApiError } from './api/errors.ts'
 import { createDemoMockApi, DEMO_SESSION_ID } from './api/mockApi.ts'
 import type { BoardSlot, SlotSpec } from './api/types.ts'
 import { BoardGrid } from './board/BoardGrid.tsx'
+import { formatSlotId } from './board/slotId.ts'
 import { SlotEditor } from './teacher/SlotEditor.tsx'
 import './App.css'
 
@@ -19,11 +20,15 @@ function readSessionParam(): string {
   return DEMO_SESSION_ID
 }
 
+function asSlotSpecs(slots: BoardSlot[]): SlotSpec[] {
+  return slots.map(({ date, start, end, room }) => ({ date, start, end, room }))
+}
+
 function specsEqual(a: SlotSpec[], b: SlotSpec[]): boolean {
   if (a.length !== b.length) return false
   const keys = (slots: SlotSpec[]) =>
     slots
-      .map((slot) => `${slot.date}_${slot.start}-${slot.end}_${slot.room}`)
+      .map(formatSlotId)
       .sort()
       .join('|')
   return keys(a) === keys(b)
@@ -78,7 +83,7 @@ export default function App() {
         setLoadError(null)
         setEditorSlots((current) => {
           if (dirty) return current
-          return board.slots.map(({ date, start, end, room }) => ({ date, start, end, room }))
+          return asSlotSpecs(board.slots)
         })
       } catch (error) {
         if (cancelled) return
@@ -111,7 +116,7 @@ export default function App() {
   }
 
   function reloadEditorFromBoard() {
-    setEditorSlots(slots.map(({ date, start, end, room }) => ({ date, start, end, room })))
+    setEditorSlots(asSlotSpecs(slots))
     setDirty(false)
     setSaveError(null)
   }
@@ -123,7 +128,7 @@ export default function App() {
       await api.replaceAvailableSlots(sessionId, editorSlots)
       const board = await api.getBoard(sessionId)
       setSlots(board.slots)
-      setEditorSlots(board.slots.map(({ date, start, end, room }) => ({ date, start, end, room })))
+      setEditorSlots(asSlotSpecs(board.slots))
       setDirty(false)
       setUpdatedAt(new Date())
     } catch (error) {

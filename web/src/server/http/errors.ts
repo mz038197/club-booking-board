@@ -3,6 +3,7 @@
 export type ErrorCode =
   | "UNAUTHORIZED"
   | "NOT_A_STUDENT"
+  | "FORBIDDEN"
   | "BOOKING_CLOSED"
   | "ROUTER_UNAVAILABLE"
   | "SLOT_TAKEN"

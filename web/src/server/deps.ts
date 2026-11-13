@@ -9,6 +9,8 @@ export type Deps = {
   db: Db;
   gateway: RouterGateway;
   now: () => Date;
+  /** HMAC secret for the teacher session cookie (TEACHER_SESSION_SECRET, at least 32 chars). */
+  sessionSecret: string;
 };
 
 const holder = globalThis as unknown as { __deps?: Promise<Deps>; __testDeps?: Deps | null };
@@ -19,6 +21,7 @@ export async function getDeps(): Promise<Deps> {
     db: await dbFromEnv(process.env),
     gateway: gatewayFromEnv(process.env),
     now: () => new Date(),
+    sessionSecret: process.env.TEACHER_SESSION_SECRET ?? "",
   }))();
   return holder.__deps;
 }

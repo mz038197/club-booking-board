@@ -11,6 +11,8 @@ export type RequestOptions = {
   /** JSON body. */
   body?: unknown;
   headers?: Record<string, string>;
+  /** Sent as the `Cookie` header (see `teacherCookie` in ./teacher.ts). */
+  cookies?: Record<string, string>;
 };
 
 export type TestApp = {
@@ -25,6 +27,8 @@ export type TestApp = {
  * Fresh test DB + fake router gateway, installed as the app's deps.
  * Override `gateway` or `now` to change them for one test.
  */
+export const TEST_SESSION_SECRET = "test-session-secret-0123456789abcdef";
+
 export async function setupTestApp(
   overrides: { gateway?: RouterGateway; now?: () => Date } = {},
 ): Promise<TestApp> {
@@ -33,6 +37,7 @@ export async function setupTestApp(
     db,
     gateway: overrides.gateway ?? createFakeGateway({}),
     now: overrides.now ?? (() => new Date()),
+    sessionSecret: TEST_SESSION_SECRET,
   };
   setDepsForTests(deps);
 
@@ -45,6 +50,14 @@ export async function setupTestApp(
       if (!route) throw new Error(`No route for ${method} ${url.pathname} in test/helpers/routes.ts`);
       const headers = new Headers(options.headers);
       if (options.key) headers.set("authorization", `Bearer ${options.key}`);
+      if (options.cookies) {
+        headers.set(
+          "cookie",
+          Object.entries(options.cookies)
+            .map(([name, value]) => `${name}=${value}`)
+            .join("; "),
+        );
+      }
       let body: string | undefined;
       if (options.body !== undefined) {
         headers.set("content-type", "application/json");

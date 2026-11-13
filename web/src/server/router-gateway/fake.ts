@@ -1,9 +1,12 @@
+import { createHash } from "node:crypto";
 import {
   INVALID_NOTICE,
   NOT_A_STUDENT_NOTICE,
   UNAVAILABLE_NOTICE,
+  type ClassRef,
   type RouterGateway,
   type StudentKeyCheck,
+  type Teacher,
 } from "./types";
 
 type Env = Record<string, string | undefined>;
@@ -57,6 +60,46 @@ const ANSWERS: Record<string, StudentKeyCheck> = {
   [FAKE_KEYS.unavailable]: { ok: false, reason: "unavailable", message: UNAVAILABLE_NOTICE },
 };
 
+export const FAKE_CLASSES: Record<"monday" | "wednesday", ClassRef> = {
+  monday: { id: FAKE_CLASS_ID, name: "週一 程式設計" },
+  wednesday: { id: FAKE_OTHER_CLASS_ID, name: "週三 進階班" },
+};
+
+type FakeTeacher = Teacher & { isAdmin: boolean; classes: ClassRef[] };
+
+/** Fixed teachers the fake login page offers (instead of the router's Google sign-in). */
+export const FAKE_TEACHERS = {
+  /** Owns 班級 56 */
+  teacher: { userId: 42, displayName: "林老師", isAdmin: false, classes: [FAKE_CLASSES.monday] },
+  /** Owns 班級 57 */
+  otherTeacher: { userId: 43, displayName: "陳老師", isAdmin: false, classes: [FAKE_CLASSES.wednesday] },
+  /** A teacher with no 班級 */
+  noClasses: { userId: 44, displayName: "張老師", isAdmin: false, classes: [] },
+  /** Admin: manages every 班級 */
+  admin: { userId: 1, displayName: "系統管理員", isAdmin: true, classes: [FAKE_CLASSES.monday, FAKE_CLASSES.wednesday] },
+} as const satisfies Record<string, FakeTeacher>;
+
+/** The fake router's authorize page, served by this app only with the fake gateway. */
+export const FAKE_AUTHORIZE_PATH = "/dev/fake-router/authorize";
+
+const s256 = (verifier: string) => createHash("sha256").update(verifier).digest("base64url");
+
+/**
+ * What the fake authorize page does when a fake teacher is picked: the callback
+ * URL (redirect_uri + code + state). The code binds the teacher to the PKCE challenge.
+ */
+export function fakeApproveLogin(authorizeUrl: string, userId: number): string {
+  const params = new URL(authorizeUrl, "http://localhost").searchParams;
+  const callback = new URL(params.get("redirect_uri") ?? "");
+  callback.searchParams.set("code", `fake.${userId}.${params.get("code_challenge") ?? ""}`);
+  callback.searchParams.set("state", params.get("state") ?? "");
+  return callback.toString();
+}
+
+function findFakeTeacher(userId: number): FakeTeacher | undefined {
+  return Object.values(FAKE_TEACHERS).find((t) => t.userId === userId);
+}
+
 /**
  * Production = Vercel production, or NODE_ENV=production outside Vercel.
  * Vercel preview deployments (VERCEL_ENV=preview) are not production.
@@ -76,6 +119,32 @@ export function createFakeGateway(env: Env): RouterGateway {
       return (
         ANSWERS[(key ?? "").trim()] ?? { ok: false, reason: "invalid", message: INVALID_NOTICE }
       );
+    },
+
+    teacherLoginUrl({ redirectUri, state, codeChallenge }) {
+      const url = new URL(FAKE_AUTHORIZE_PATH, redirectUri);
+      url.search = new URLSearchParams({
+        redirect_uri: redirectUri,
+        state,
+        code_challenge: codeChallenge,
+      }).toString();
+      return url.toString();
+    },
+
+    async completeTeacherLogin({ code, codeVerifier }) {
+      const match = /^fake\.(\d+)\.(.+)$/.exec(code);
+      const teacher = match ? findFakeTeacher(Number(match[1])) : undefined;
+      if (!match || !teacher || match[2] !== s256(codeVerifier)) return { ok: false, reason: "invalid" };
+      return { ok: true, teacher: { userId: teacher.userId, displayName: teacher.displayName } };
+    },
+
+    async teacherClasses(userId) {
+      const teacher = findFakeTeacher(userId);
+      return {
+        ok: true,
+        isAdmin: teacher?.isAdmin ?? false,
+        classes: teacher ? [...teacher.classes] : [],
+      };
     },
   };
 }

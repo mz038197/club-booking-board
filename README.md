@@ -1,72 +1,58 @@
 # club-booking-board
 
-課堂社團預約板（學生專案）。產品規格見 [`docs/specs/club-classroom-booking-v1.md`](docs/specs/club-classroom-booking-v1.md)。
+社團教室出借看板：學生打造會借教室的 Agent，以課堂金鑰呼叫 API 或 MCP 預約可借格；教師在後台開堂課、監看投影看板。用語見 [`CONTEXT.md`](CONTEXT.md)，決策見 [`docs/adr/`](docs/adr/)，v2 規格見 issue #14（原始產品規格：[`docs/specs/club-classroom-booking-v1.md`](docs/specs/club-classroom-booking-v1.md)）。
 
-v1 後端：FastAPI + SQLite，教師開格、學生預約／取消、看板查詢、海報文案（不出圖）。教師看板：Vite + React + TypeScript 獨立頁、短輪詢。
+正式站：https://club-booking-board.vercel.app
 
 ## 版面
 
 | 路徑 | 內容 |
 |------|------|
-| `backend/` | FastAPI + SQLite API |
-| `frontend/` | 教師看板（Vite + React + TypeScript，獨立頁、短輪詢） |
-| `docs/` | 規格與 agent 文件 |
+| `web/` | Next.js App Router：首頁、教師後台、投影看板、分享連結、學生 API `/api/v1` |
+| `web/db/migrations/` | Postgres schema（正式站在 Supabase） |
+| `docs/` | 規格、ADR 與 agent 文件 |
 | `.agents/skills/` | Cursor 工程 skills |
 
-## Run locally（後端）
+身分一律來自 router（ai.vanscoding.com）：教師以 Google 經 router 登入，學生用自己的課堂金鑰（ADR 0003）。
+
+## Run locally
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-export DATABASE_PATH=booking.db
-uvicorn app.main:create_default_app --factory --app-dir backend --host 0.0.0.0 --port 8000
-```
-
-OpenAPI: http://127.0.0.1:8000/docs
-
-CORS is limited to local frontend origins: `http://localhost:*` and `http://127.0.0.1:*` (Vite default `http://localhost:5173`). Other origins are not allowed.
-
-## 教師看板
-
-```bash
-cd frontend
+cd web
 npm install
+cp .env.example .env.local   # 本機設 ROUTER_GATEWAY=fake，用假的 router 登入
+npm run db:seed              # PGlite：建表並放一堂示範堂課
 npm run dev
 ```
 
-看板透過 `VITE_API_BASE_URL` 呼叫後端（例：`http://localhost:8000`），或使用頁面上的本機模擬。細節見 [`frontend/README.md`](frontend/README.md)。
+說明都在 `web/.env.example`。PGlite 一次只允許一個程序，seed 前先停掉 dev server。
 
 ## Tests
 
-Install runtime deps plus test-only packages (`pytest`, `httpx`) via `backend/requirements-dev.txt` (includes `-r requirements.txt`). Production `requirements.txt` does not include pytest.
-
 ```bash
-pip install -r backend/requirements-dev.txt
-python3 -m pytest
+cd web
+npm test            # vitest，PGlite
+npm run typecheck
+npm run lint
 ```
 
-Frontend: `cd frontend && npm test`.
+真正的 Postgres 並發測試是選用的：設 `TEST_DATABASE_URL` 指向一台可以建資料庫的 Postgres 再跑 `npm test`。
 
-## API (v1)
+## 學生 API
 
-Owner identity for cancel is query param `student_id`.
+Agent 呼叫 `/api/v1`（`Authorization: Bearer <課堂金鑰>`）：
 
-| Method | Path | Notes |
-|--------|------|--------|
-| PUT | `/sessions/{session_id}/slots` | Full replace of **open** slots. Body `{ "slots": [{ date, start, end, room }] }`. Removing a booked slot → 409 `CONFLICT`. |
-| GET | `/sessions/{session_id}/board` | `{ "slots": [{ slot_id, date, start, end, room, status, booked_by? }] }` `status` is `open` or `booked`. |
-| POST | `/sessions/{session_id}/bookings` | `{ slot_id, student_id }` → 201 `{ booking_id, slot_id, student_id }`. Taken → 409 `SLOT_TAKEN`. |
-| DELETE | `/sessions/{session_id}/bookings/{booking_id}?student_id=` | Owner only. Wrong owner → 403 `NOT_OWNER`. Missing → 404 `NOT_FOUND`. |
-| POST | `/poster/copy` | `{ title, time, place, notes? }` → `{ title, time_place, slogan, body }` (no images). |
+| Method | Path | 用途 |
+|--------|------|------|
+| GET | `/api/v1/slots` | 查目前堂課的可借格 |
+| POST | `/api/v1/bookings` | 預約一格 |
+| GET | `/api/v1/bookings` | 查自己的預約 |
+| DELETE | `/api/v1/bookings/{id}` | 取消自己的預約 |
+| POST | `/api/v1/poster/copy` | 海報文案 |
 
-`slot_id` format: `{date}_{start}-{end}_{room}` e.g. `2026-09-25_13:00-15:00_301`.
+完整規格（給 Agent Builder 匯入）：`/api/v1/openapi.json`。
 
-4xx envelope: `{ "code": "SLOT_TAKEN" \| "NOT_OWNER" \| "NOT_FOUND" \| "INVALID_SLOT" \| "INVALID_POSTER" \| "INVALID_REQUEST" \| "CONFLICT", "message"? }`.
-
-Validation: unknown / malformed slot → `INVALID_SLOT`; poster body → `INVALID_POSTER`; other request shape → `INVALID_REQUEST`. Race / booking codes (`SLOT_TAKEN`, `CONFLICT`, `NOT_OWNER`, `NOT_FOUND`) are unchanged.
-
-## Deploy (v2, `web/`)
+## Deploy
 
 The Vercel project `club-booking-board` (team vans-coding) is connected to this repo with Root Directory `web`:
 

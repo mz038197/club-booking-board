@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDeps } from "@/server/deps";
 import { managedClass } from "@/server/http/teacher-auth";
-import { monitorSessionOf } from "@/server/monitor";
-import { currentSessionOf } from "@/server/sessions";
+import { isUuid } from "@/server/http/teacher-route";
+import { currentSessionOf, sessionById } from "@/server/sessions";
 import { requireTeacherPage } from "@/server/teacher-page";
 import { ui } from "@/app/ui";
 import { MonitorBoard } from "./monitor-board";
@@ -34,7 +34,7 @@ export default async function MonitorPage({
   if (!sessionId) {
     return <Notice title={`${cls.name}還沒有堂課`} detail="先在教師後台建立堂課與可借清單。" classId={cls.id} />;
   }
-  const session = await monitorSessionOf(deps.db, sessionId);
+  const session = isUuid(sessionId) ? await sessionById(deps.db, sessionId) : null;
   if (!session || session.classId !== cls.id) notFound();
 
   return (

@@ -15,10 +15,15 @@ export const ROUTES: Record<string, () => Promise<RouteModule>> = {
   "/auth/logout": () => import("@/app/auth/logout/route"),
   "/api/teacher/me": () => import("@/app/api/teacher/me/route"),
   "/api/teacher/classes/:classId": () => import("@/app/api/teacher/classes/[classId]/route"),
-  "/api/teacher/sessions/:sessionId/monitor": () =>
-    import("@/app/api/teacher/sessions/[sessionId]/monitor/route"),
-  "/api/teacher/sessions/:sessionId/display-settings": () =>
-    import("@/app/api/teacher/sessions/[sessionId]/display-settings/route"),
+  "/api/teacher/classes/:classId/sessions": () => import("@/app/api/teacher/classes/[classId]/sessions/route"),
+  "/api/teacher/sessions/:id": () => import("@/app/api/teacher/sessions/[id]/route"),
+  "/api/teacher/sessions/:id/current": () => import("@/app/api/teacher/sessions/[id]/current/route"),
+  "/api/teacher/sessions/:id/slots": () => import("@/app/api/teacher/sessions/[id]/slots/route"),
+  "/api/teacher/sessions/:id/slots/generate": () => import("@/app/api/teacher/sessions/[id]/slots/generate/route"),
+  "/api/teacher/sessions/:id/slots/:slotId": () => import("@/app/api/teacher/sessions/[id]/slots/[slotId]/route"),
+  "/api/teacher/sessions/:id/monitor": () => import("@/app/api/teacher/sessions/[id]/monitor/route"),
+  "/api/teacher/sessions/:id/display-settings": () =>
+    import("@/app/api/teacher/sessions/[id]/display-settings/route"),
 };
 
 export async function resolveRoute(

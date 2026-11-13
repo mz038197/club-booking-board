@@ -1,8 +1,20 @@
 import type { Db } from "./db";
+import { ApiError } from "./http/errors";
 
 /** 堂課 / 目前堂課 / 可借格 data access. */
 
-export type Session = { id: string; classId: number; name: string; paused: boolean };
+export type Session = {
+  id: string;
+  classId: number;
+  name: string;
+  paused: boolean;
+  /** 預約規則: 每人上限 (1–5) */
+  perStudentLimit: number;
+  /** 投影顯示設定: 遮蔽名稱 (投影監看頁 only; never the 分享連結 or the student API) */
+  maskNames: boolean;
+  /** 投影顯示設定: default of 「有人預約時自動跳到那一天」 */
+  autoFollow: boolean;
+};
 
 export type SlotInput = { date: string; start: string; end: string; room: string };
 
@@ -20,33 +32,131 @@ export function makeSlotId(slot: SlotInput): string {
   return `${slot.date}_${slot.start}-${slot.end}_${slot.room}`;
 }
 
-type SessionRow = { id: string; class_id: number; name: string; paused: boolean };
+type SessionRow = {
+  id: string;
+  class_id: number;
+  name: string;
+  paused: boolean;
+  per_student_limit: number;
+  mask_names: boolean;
+  auto_follow: boolean;
+};
 
-const toSession = (r: SessionRow): Session => ({
+/** The `sessions` columns `toSession` reads (prefix with an alias via `sessionCols("s")`). */
+export const sessionCols = (alias = "") =>
+  ["id", "class_id", "name", "paused", "per_student_limit", "mask_names", "auto_follow"]
+    .map((c) => (alias ? `${alias}.${c}` : c))
+    .join(", ");
+
+export const toSession = (r: SessionRow): Session => ({
   id: r.id,
   classId: r.class_id,
   name: r.name,
   paused: r.paused,
+  perStudentLimit: r.per_student_limit,
+  maskNames: r.mask_names,
+  autoFollow: r.auto_follow,
 });
 
-/** Creates a 堂課; it becomes its class's 目前堂課. */
+export type { SessionRow };
+
+/**
+ * 預約規則 columns a new 堂課 copies from the 堂課 it is based on (可借清單 is copied
+ * separately; 預約 never). Add new rule columns here (e.g. #19's time window).
+ */
+export const COPIED_RULE_COLUMNS = ["per_student_limit"] as const;
+
+/**
+ * Creates a 堂課; it becomes its class's 目前堂課. With `copyFrom` (a 堂課 of the
+ * same 班級) it starts with that 堂課's 可借清單 and 預約規則, without its 預約.
+ * Throws 400 INVALID_REQUEST when `copyFrom` is not a 堂課 of this 班級.
+ */
 export async function createSession(
   db: Db,
-  input: { classId: number; name: string },
+  input: { classId: number; name: string; copyFrom?: string },
 ): Promise<Session> {
   return db.transaction(async (tx) => {
-    const [row] = await tx.query<SessionRow>(
-      `INSERT INTO sessions (class_id, name) VALUES ($1, $2)
-       RETURNING id, class_id, name, paused`,
-      [input.classId, input.name],
-    );
-    await tx.query(
-      `INSERT INTO class_current_sessions (class_id, session_id) VALUES ($1, $2)
-       ON CONFLICT (class_id) DO UPDATE SET session_id = EXCLUDED.session_id`,
-      [input.classId, row.id],
-    );
+    let row: SessionRow | undefined;
+    if (input.copyFrom) {
+      const cols = COPIED_RULE_COLUMNS.join(", ");
+      [row] = await tx.query<SessionRow>(
+        `INSERT INTO sessions (class_id, name, ${cols})
+         SELECT class_id, $2, ${cols} FROM sessions WHERE id = $3 AND class_id = $1
+         RETURNING ${sessionCols()}`,
+        [input.classId, input.name, input.copyFrom],
+      );
+      if (!row) throw new ApiError(400, "INVALID_REQUEST", "要複製的堂課不在這個班級");
+      await tx.query(
+        `INSERT INTO slots (session_id, slot_id, date, start_time, end_time, room)
+         SELECT $1, slot_id, date, start_time, end_time, room FROM slots WHERE session_id = $2`,
+        [row.id, input.copyFrom],
+      );
+    } else {
+      [row] = await tx.query<SessionRow>(
+        `INSERT INTO sessions (class_id, name) VALUES ($1, $2)
+         RETURNING ${sessionCols()}`,
+        [input.classId, input.name],
+      );
+    }
+    await setCurrent(tx, input.classId, row.id);
     return toSession(row);
   });
+}
+
+async function setCurrent(db: Db, classId: number, sessionId: string): Promise<void> {
+  await db.query(
+    `INSERT INTO class_current_sessions (class_id, session_id) VALUES ($1, $2)
+     ON CONFLICT (class_id) DO UPDATE SET session_id = EXCLUDED.session_id`,
+    [classId, sessionId],
+  );
+}
+
+/** Makes a 堂課 its 班級's 目前堂課 (e.g. switching back to an older one). */
+export async function makeCurrentSession(db: Db, session: Session): Promise<void> {
+  await setCurrent(db, session.classId, session.id);
+}
+
+export async function sessionById(db: Db, id: string): Promise<Session | null> {
+  const [row] = await db.query<SessionRow>(
+    `SELECT ${sessionCols()} FROM sessions WHERE id = $1`,
+    [id],
+  );
+  return row ? toSession(row) : null;
+}
+
+export type SessionSummary = {
+  id: string;
+  name: string;
+  /** ISO time */
+  createdAt: string;
+  isCurrent: boolean;
+  slotCount: number;
+};
+
+/** A 班級's 堂課, newest first, with the 目前堂課 marked. */
+export async function sessionsOfClass(db: Db, classId: number): Promise<SessionSummary[]> {
+  const rows = await db.query<{
+    id: string;
+    name: string;
+    created_at: Date | string;
+    is_current: boolean;
+    slot_count: number | string;
+  }>(
+    `SELECT s.id, s.name, s.created_at, (c.session_id IS NOT NULL) AS is_current,
+            (SELECT count(*) FROM slots sl WHERE sl.session_id = s.id) AS slot_count
+       FROM sessions s
+       LEFT JOIN class_current_sessions c ON c.session_id = s.id
+      WHERE s.class_id = $1
+      ORDER BY s.created_at DESC, s.id`,
+    [classId],
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    createdAt: new Date(r.created_at).toISOString(),
+    isCurrent: r.is_current,
+    slotCount: Number(r.slot_count),
+  }));
 }
 
 /** Adds 可借格 to a 堂課, skipping ones it already has. */
@@ -65,7 +175,7 @@ export async function addSlots(db: Db, sessionId: string, slots: SlotInput[]): P
 
 export async function currentSessionOf(db: Db, classId: number): Promise<Session | null> {
   const [row] = await db.query<SessionRow>(
-    `SELECT s.id, s.class_id, s.name, s.paused
+    `SELECT ${sessionCols("s")}
        FROM class_current_sessions c JOIN sessions s ON s.id = c.session_id
       WHERE c.class_id = $1`,
     [classId],

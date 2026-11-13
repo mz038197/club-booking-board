@@ -1,66 +1,24 @@
 import { maskDisplayName } from "@/board/mask";
 import type { MonitorCall, MonitorRosterEntry, MonitorSnapshot } from "@/board/snapshot";
 import type { Db } from "./db";
-import { boardOf } from "./sessions";
+import { boardOf, sessionCols, toSession, type Session, type SessionRow } from "./sessions";
+
+/** 投影監看 data: 投影顯示設定 and the monitor snapshot of a 堂課. */
 
 /** How many API 呼叫紀錄 rows the monitor shows (newest). */
 export const MONITOR_CALL_LIMIT = 200;
-
-/** 投影監看 data: a 堂課 with its 投影顯示設定, and the monitor snapshot. */
-
-export type MonitorSession = {
-  id: string;
-  classId: number;
-  name: string;
-  paused: boolean;
-  /** 投影顯示設定: 遮蔽名稱 (projection only; never the 分享連結) */
-  maskNames: boolean;
-  /** 投影顯示設定: default of 「有人預約時自動跳到那一天」 */
-  autoFollow: boolean;
-};
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-type SessionRow = {
-  id: string;
-  class_id: number;
-  name: string;
-  paused: boolean;
-  mask_names: boolean;
-  auto_follow: boolean;
-};
-
-const SESSION_COLUMNS = "id, class_id, name, paused, mask_names, auto_follow";
-
-const toSession = (r: SessionRow): MonitorSession => ({
-  id: r.id,
-  classId: r.class_id,
-  name: r.name,
-  paused: r.paused,
-  maskNames: r.mask_names,
-  autoFollow: r.auto_follow,
-});
-
-/** A 堂課 by id (`null` when unknown or not a uuid). */
-export async function monitorSessionOf(db: Db, sessionId: string): Promise<MonitorSession | null> {
-  if (!UUID.test(sessionId)) return null;
-  const [row] = await db.query<SessionRow>(`SELECT ${SESSION_COLUMNS} FROM sessions WHERE id = $1`, [
-    sessionId,
-  ]);
-  return row ? toSession(row) : null;
-}
 
 /** Changes the 投影顯示設定 fields given; returns the 堂課 with the new values. */
 export async function setDisplaySettings(
   db: Db,
   sessionId: string,
   change: { maskNames?: boolean; autoFollow?: boolean },
-): Promise<MonitorSession> {
+): Promise<Session> {
   const [row] = await db.query<SessionRow>(
     `UPDATE sessions
         SET mask_names = COALESCE($2, mask_names), auto_follow = COALESCE($3, auto_follow)
       WHERE id = $1
-      RETURNING ${SESSION_COLUMNS}`,
+      RETURNING ${sessionCols()}`,
     [sessionId, change.maskNames ?? null, change.autoFollow ?? null],
   );
   return toSession(row);
@@ -70,7 +28,7 @@ export async function setDisplaySettings(
  * Everything the 投影監看頁 shows for a 堂課: 看板, 名冊進度 and the newest API 呼叫紀錄.
  * With 遮蔽名稱 on, every 顯示名稱 is masked here, so full names never reach the projector.
  */
-export async function monitorSnapshot(db: Db, session: MonitorSession): Promise<MonitorSnapshot> {
+export async function monitorSnapshot(db: Db, session: Session): Promise<MonitorSnapshot> {
   const name = session.maskNames ? maskDisplayName : (n: string) => n;
   const slots = await boardOf(db, session.id);
   const roster = await rosterProgressOf(db, session.id);

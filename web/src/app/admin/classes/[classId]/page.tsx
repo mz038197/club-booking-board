@@ -5,6 +5,7 @@ import { boardOf, sessionById, sessionsOfClass } from "@/server/sessions";
 import { requireTeacherPage } from "@/server/teacher-page";
 import { ui } from "@/app/ui";
 import { AdminHeader } from "../../admin-header";
+import { PauseSwitch } from "./pause-switch";
 import { prepSteps, type SessionContext } from "./prep-steps";
 import { SessionBar } from "./session-bar";
 import { Workspace } from "./workspace";
@@ -60,7 +61,14 @@ export default async function ClassPage({
           selectedId={picked?.id ?? null}
           sessions={sessions.map((s) => ({ id: s.id, name: s.name, isCurrent: s.isCurrent, slotCount: s.slotCount }))}
         />
-        {ctx ? <Workspace key={ctx.session.id} steps={prepSteps(ctx)} /> : null}
+        {ctx ? (
+          <Workspace
+            key={ctx.session.id}
+            steps={prepSteps(ctx)}
+            // 上課中: 暫停 switch on top (#19); #20 adds 統計、預約、名冊、操作紀錄 below it.
+            live={<PauseSwitch sessionId={ctx.session.id} paused={ctx.session.paused} />}
+          />
+        ) : null}
       </main>
     </>
   );

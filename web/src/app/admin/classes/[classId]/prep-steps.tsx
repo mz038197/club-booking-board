@@ -1,5 +1,6 @@
 import type { ClassRef } from "@/server/router-gateway";
 import type { BoardSlot, Session } from "@/server/sessions";
+import { RulesStep } from "./steps/rules-step";
 import { SlotsStep } from "./steps/slots-step";
 import type { PrepStepView } from "./workspace";
 
@@ -24,6 +25,22 @@ export function prepSteps(ctx: SessionContext): PrepStepView[] {
       done: ctx.slots.length > 0,
       hint: `${ctx.slots.length} 格`,
       body: <SlotsStep sessionId={ctx.session.id} slots={ctx.slots} />,
+    },
+    {
+      key: "rules",
+      title: "預約規則",
+      // Defaults are usable as-is; the step is "done" once it is visible (原型: 看過即完成).
+      done: true,
+      hint: `每人 ${ctx.session.perStudentLimit} 格・${
+        ctx.session.bookingWindow ? `${ctx.session.bookingWindow.start}–${ctx.session.bookingWindow.end}` : "不限時間"
+      }`,
+      body: (
+        <RulesStep
+          sessionId={ctx.session.id}
+          perStudentLimit={ctx.session.perStudentLimit}
+          bookingWindow={ctx.session.bookingWindow}
+        />
+      ),
     },
   ];
 }

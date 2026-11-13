@@ -1,3 +1,4 @@
+import { assertBookingOpen } from "@/server/booking-rules";
 import { bookingsOf, bookSlot } from "@/server/bookings";
 import { ApiError } from "@/server/http/errors";
 import { studentRoute } from "@/server/http/student-route";
@@ -17,11 +18,13 @@ async function slotIdFrom(req: Request): Promise<string> {
 export const POST = studentRoute("bookSlot", async ({ req, deps, student, session, log }) => {
   const slotId = await slotIdFrom(req);
   log.slotId = slotId;
+  const now = deps.now();
+  assertBookingOpen(session, now);
   const booking = await bookSlot(deps.db, {
     sessionId: session.id,
     slotId,
     studentId: student.studentId,
-    now: deps.now(),
+    now,
   });
   return Response.json(booking, { status: 201 });
 });

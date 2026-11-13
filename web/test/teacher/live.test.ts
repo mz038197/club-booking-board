@@ -260,6 +260,20 @@ describe("GET /api/teacher/sessions/:id/admin-log — 教師操作紀錄", () =>
     ]);
   });
 
+  it("records 產生／重新產生／關閉 分享連結", async () => {
+    const url = `/api/teacher/sessions/${sessionId}/share-link`;
+    await app.request("POST", url, as());
+    await app.request("POST", url, as());
+    await app.request("DELETE", url, as());
+
+    const messages = (await get("/admin-log")).entries.slice(0, 3).map((e: { message: string }) => e.message);
+    expect(messages).toEqual([
+      "已關閉分享連結",
+      "已重新產生分享連結：舊連結立即失效",
+      "已產生分享連結（12 小時後失效）",
+    ]);
+  });
+
   it("does not record previews or refused actions", async () => {
     await book(FAKE_KEYS.studentA, A101);
     await app.request("POST", `/api/teacher/sessions/${sessionId}/slots/generate`, {

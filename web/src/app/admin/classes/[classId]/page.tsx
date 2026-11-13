@@ -15,6 +15,7 @@ import { requireTeacherPage } from "@/server/teacher-page";
 import { ui } from "@/app/ui";
 import { AdminHeader } from "../../admin-header";
 import { LiveMode, type LiveData } from "./live-mode";
+import { ShareStep } from "./steps/share-step";
 import { PauseSwitch } from "./pause-switch";
 import { prepSteps, type SessionContext } from "./prep-steps";
 import { SessionBar } from "./session-bar";
@@ -104,6 +105,13 @@ export default async function ClassPage({
               <LiveMode
                 data={await liveData(db, ctx.session.id)}
                 pauseSwitch={<PauseSwitch sessionId={ctx.session.id} paused={ctx.session.paused} />}
+                shareLink={
+                  <ShareStep
+                    sessionId={ctx.session.id}
+                    isCurrent={ctx.isCurrent}
+                    expiresAt={ctx.shareLinkExpiresAt}
+                  />
+                }
                 monitorLink={
                   <a
                     href={`/admin/classes/${cls.id}/monitor?session=${ctx.session.id}`}

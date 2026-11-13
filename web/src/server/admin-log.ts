@@ -13,9 +13,9 @@ export type AdminAction =
   | "forceCancel"
   | "resetSession"
   | "displaySettings"
-  // #19 (預約規則 / 暫停): log with these from its route handlers.
   | "setRules"
-  | "setPaused";
+  | "setPaused"
+  | "shareLink";
 
 export type AdminLogEntry = {
   /** ISO time */

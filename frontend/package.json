@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "prototype": "vite --open /prototype-board.html",
+    "prototype:admin": "vite --open /prototype-admin.html",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",

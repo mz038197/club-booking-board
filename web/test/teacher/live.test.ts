@@ -229,6 +229,18 @@ describe("GET /api/teacher/sessions/:id/admin-log — 教師操作紀錄", () =>
     ]);
   });
 
+  it("records 投影顯示 changes", async () => {
+    await app.request("PATCH", `/api/teacher/sessions/${sessionId}/display-settings`, {
+      ...as(),
+      body: { mask_names: true },
+    });
+
+    expect((await get("/admin-log")).entries[0]).toMatchObject({
+      action: "displaySettings",
+      message: "投影：遮蔽名稱、不自動跳日",
+    });
+  });
+
   it("does not record previews or refused actions", async () => {
     await book(FAKE_KEYS.studentA, A101);
     await app.request("POST", `/api/teacher/sessions/${sessionId}/slots/generate`, {

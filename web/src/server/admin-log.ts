@@ -11,7 +11,11 @@ export type AdminAction =
   | "removeSlot"
   | "replaceSlots"
   | "forceCancel"
-  | "resetSession";
+  | "resetSession"
+  | "displaySettings"
+  // #19 (預約規則 / 暫停): log with these from its route handlers.
+  | "setRules"
+  | "setPaused";
 
 export type AdminLogEntry = {
   /** ISO time */

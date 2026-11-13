@@ -1,7 +1,10 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { adminLogOf } from "@/server/admin-log";
 import { sessionBookingsOf } from "@/server/bookings";
 import type { Db } from "@/server/db";
+import { studentOpenApi } from "@/server/openapi";
+import { agentBuilderSettings } from "@/server/public-urls";
 import { getDeps } from "@/server/deps";
 import { statsOf } from "@/server/live";
 import { rosterOf } from "@/server/students";
@@ -63,8 +66,18 @@ export default async function ClassPage({
   const picked =
     sessions.find((s) => s.id === wanted) ?? sessions.find((s) => s.isCurrent) ?? sessions[0] ?? null;
   const session = picked ? await sessionById(db, picked.id) : null;
+  const h = await headers();
+  const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+  const settings = agentBuilderSettings(process.env, origin);
   const ctx: SessionContext | null = session
-    ? { cls, session, isCurrent: picked!.isCurrent, slots: await boardOf(db, session.id) }
+    ? {
+        cls,
+        session,
+        isCurrent: picked!.isCurrent,
+        slots: await boardOf(db, session.id),
+        agentBuilder: { settings, openApi: JSON.stringify(studentOpenApi(settings.apiBaseUrl), null, 2) },
+        rosterCount: (await rosterOf(db, session.id)).length,
+      }
     : null;
 
   return (
@@ -81,7 +94,21 @@ export default async function ClassPage({
           <Workspace
             key={ctx.session.id}
             steps={prepSteps(ctx)}
-            live={<LiveMode data={await liveData(db, ctx.session.id)} />}
+            live={
+              <LiveMode
+                data={await liveData(db, ctx.session.id)}
+                monitorLink={
+                  <a
+                    href={`/admin/classes/${cls.id}/monitor?session=${ctx.session.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ ...ui.buttonOutline, textDecoration: "none" }}
+                  >
+                    投影監看頁 ↗
+                  </a>
+                }
+              />
+            }
           />
         ) : null}
       </main>

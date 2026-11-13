@@ -32,8 +32,8 @@ const clock = (iso: string) =>
  * ② 上課中 (原型版本 C): 暫停＋投影監看頁＋重置堂課 on top, then 統計, 預約（可強制取消）,
  * 名冊, 學生分享連結 and 教師操作紀錄. Re-reads the server every few seconds.
  *
- * Slots for other tickets: `pauseSwitch` (#19 暫停 switch), `monitorLink` (#21 投影監看頁),
- * `shareLink` (#22 學生分享連結 card).
+ * Slots filled by page.tsx: `pauseSwitch` (#19 暫停 switch — not merged yet, placeholder shown),
+ * `monitorLink` (#21 投影監看頁), `shareLink` (#22 學生分享連結 card).
  */
 export function LiveMode({
   data,
@@ -70,7 +70,6 @@ export function LiveMode({
         {/* #19: 暫停 switch (big, default off) goes here. */}
         {pauseSwitch ?? <span style={ui.muted}>暫停開關（#19）</span>}
         <div style={ui.row}>
-          {/* #21: link to the 投影監看頁 goes here. */}
           {monitorLink}
           <ConfirmButton
             label="重置堂課"

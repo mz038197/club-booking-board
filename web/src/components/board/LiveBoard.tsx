@@ -38,6 +38,8 @@ export type LiveBoardProps = {
   controls?: ReactNode;
   /** Called when the source answers 401 (the monitor sends the teacher to /login). */
   onUnauthorized?: () => void;
+  /** Called (and polling stops) when the source answers 404 (the 分享連結 expired or was closed). */
+  onNotFound?: () => void;
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
@@ -54,6 +56,7 @@ export function LiveBoard({
   onFollowChange,
   controls,
   onUnauthorized,
+  onNotFound,
 }: LiveBoardProps) {
   const [snap, setSnap] = useState<BoardSnapshot | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -75,6 +78,11 @@ export function LiveBoard({
   useEffect(() => {
     unauthorizedRef.current = onUnauthorized;
   }, [onUnauthorized]);
+
+  const notFoundRef = useRef(onNotFound);
+  useEffect(() => {
+    notFoundRef.current = onNotFound;
+  }, [onNotFound]);
 
   useEffect(() => {
     let stopped = false;
@@ -123,6 +131,11 @@ export function LiveBoard({
         if (res.status === 401) {
           setError("登入已過期，請重新登入");
           unauthorizedRef.current?.();
+          return;
+        }
+        if (res.status === 404 && notFoundRef.current) {
+          setError("這個分享連結已失效");
+          notFoundRef.current();
           return;
         }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

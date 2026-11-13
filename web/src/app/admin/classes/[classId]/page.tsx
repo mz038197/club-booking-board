@@ -10,6 +10,7 @@ import { statsOf } from "@/server/live";
 import { rosterOf } from "@/server/students";
 import { managedClass } from "@/server/http/teacher-auth";
 import { boardOf, sessionById, sessionsOfClass } from "@/server/sessions";
+import { shareLinkOf } from "@/server/share-links";
 import { requireTeacherPage } from "@/server/teacher-page";
 import { ui } from "@/app/ui";
 import { AdminHeader } from "../../admin-header";
@@ -61,7 +62,9 @@ export default async function ClassPage({
     );
   }
 
-  const { db } = await getDeps();
+  const deps = await getDeps();
+  const { db } = deps;
+  const now = deps.now();
   const sessions = await sessionsOfClass(db, cls.id);
   const wanted = (await searchParams).session;
   const picked =
@@ -78,6 +81,8 @@ export default async function ClassPage({
         slots: await boardOf(db, session.id),
         agentBuilder: { settings, openApi: JSON.stringify(studentOpenApi(settings.apiBaseUrl), null, 2) },
         rosterCount: (await rosterOf(db, session.id)).length,
+        shareLinkExpiresAt: (await shareLinkOf(db, session.id, now))?.expiresAt.toISOString() ?? null,
+        now,
       }
     : null;
 

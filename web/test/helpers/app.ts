@@ -1,0 +1,83 @@
+import type { Db } from "@/server/db";
+import { setDepsForTests, type Deps } from "@/server/deps";
+import { createFakeGateway } from "@/server/router-gateway/fake";
+import type { RouterGateway } from "@/server/router-gateway";
+import { resolveRoute } from "./routes";
+import { createTestDb } from "./test-db";
+
+export type RequestOptions = {
+  /** Sent as `Authorization: Bearer <key>` (see FAKE_KEYS). */
+  key?: string;
+  /** JSON body. */
+  body?: unknown;
+  /** Sent as-is (for malformed bodies); ignored when `body` is set. */
+  rawBody?: string;
+  headers?: Record<string, string>;
+  /** Sent as the `Cookie` header (see `teacherCookie` in ./teacher.ts). */
+  cookies?: Record<string, string>;
+};
+
+export type TestApp = {
+  db: Db;
+  deps: Deps;
+  /** Calls the Next.js route handler in-process, like an HTTP request. */
+  request(method: string, path: string, options?: RequestOptions): Promise<Response>;
+  close(): Promise<void>;
+};
+
+export const TEST_SESSION_SECRET = "test-session-secret-0123456789abcdef";
+
+/**
+ * The app clock unless a test passes `now`: a fixed instant (a Wednesday, 11:00 in
+ * Asia/Taipei), so no test depends on when or where the suite runs.
+ */
+export const TEST_NOW = new Date("2026-12-16T03:00:00.000Z");
+
+/**
+ * Fresh test DB + fake router gateway, installed as the app's deps.
+ * Override `gateway` or `now` to change them for one test. `realPostgres: true`
+ * runs on a fresh database on TEST_DATABASE_URL instead of PGlite (opt-in tests).
+ */
+export async function setupTestApp(
+  overrides: { gateway?: RouterGateway; now?: () => Date; realPostgres?: boolean } = {},
+): Promise<TestApp> {
+  const db = await createTestDb({ realPostgres: overrides.realPostgres });
+  const deps: Deps = {
+    db,
+    gateway: overrides.gateway ?? createFakeGateway({}),
+    now: overrides.now ?? (() => new Date(TEST_NOW)),
+    sessionSecret: TEST_SESSION_SECRET,
+  };
+  setDepsForTests(deps);
+
+  return {
+    db,
+    deps,
+    async request(method, path, options = {}) {
+      const url = new URL(path, "http://localhost");
+      const route = await resolveRoute(method, url.pathname);
+      if (!route) throw new Error(`No route for ${method} ${url.pathname} in test/helpers/routes.ts`);
+      const headers = new Headers(options.headers);
+      if (options.key) headers.set("authorization", `Bearer ${options.key}`);
+      if (options.cookies) {
+        headers.set(
+          "cookie",
+          Object.entries(options.cookies)
+            .map(([name, value]) => `${name}=${value}`)
+            .join("; "),
+        );
+      }
+      let body: string | undefined = options.rawBody;
+      if (options.body !== undefined) {
+        headers.set("content-type", "application/json");
+        body = JSON.stringify(options.body);
+      }
+      const req = new Request(url, { method, headers, body });
+      return route.handler(req, { params: Promise.resolve(route.params) });
+    },
+    async close() {
+      setDepsForTests(null);
+      await db.close();
+    },
+  };
+}

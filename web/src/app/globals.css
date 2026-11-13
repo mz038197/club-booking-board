@@ -1,0 +1,59 @@
+/*
+ * The palette, defined once (design-system skill: semantic tokens over raw values).
+ * Inline styles (src/app/ui.ts and the admin TSX) and CSS modules (board.module.css)
+ * reference these with var(--…); don't write raw colors anywhere else.
+ */
+:root {
+  /* design-system skill foundations */
+  --primary: #000;
+  --secondary: #111;
+  --text: #111827;
+  --surface: #fff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+
+  /* shadcn zinc neutrals */
+  --background: #fafafa;
+  --foreground: #09090b;
+  --accent: #18181b; /* filled buttons, selected pills, the open step */
+  --accent-fg: #fafafa;
+  --border: #e4e4e7;
+  --border-strong: #a1a1aa;
+  --control-off: #d4d4d8; /* switch track when off */
+  --muted: #f4f4f5;
+  --muted-fg: #71717a;
+  --subtle-fg: #52525b;
+  --label-fg: #3f3f46;
+
+  /* status: soft background, border and readable text on it */
+  --success-soft: #f0fdf4;
+  --success-border: #bbf7d0;
+  --success-fg: #166534;
+  --success-text: #15803d;
+  --warning-text: #b45309;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-fg: #991b1b;
+
+  /* 教室色塊: white text ≥ 4.5:1 on each; none reuse success/warning/danger */
+  --room-1: #1d4ed8;
+  --room-2: #6d28d9;
+  --room-3: #0f766e;
+  --room-4: #be185d;
+  --room-5: #c2410c;
+  --room-6: #0369a1;
+  --room-7: #334155;
+  --room-8: #86198f;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-tab: 0 1px 2px rgb(0 0 0 / 0.08);
+  --shadow-knob: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+}

@@ -3,7 +3,7 @@ import type { Db } from "./db";
 /** API 呼叫紀錄 data access. */
 
 /** Student actions, named like the OpenAPI operationIds. */
-export type StudentAction = "listSlots" | "listMyBookings" | "bookSlot" | "cancelBooking";
+export type StudentAction = "listSlots" | "listMyBookings" | "bookSlot" | "cancelBooking" | "writePosterCopy";
 
 export type ApiCall = {
   /** ISO time */

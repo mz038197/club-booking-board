@@ -10,6 +10,8 @@ export const ROUTES: Record<string, () => Promise<RouteModule>> = {
   "/api/v1/slots": () => import("@/app/api/v1/slots/route"),
   "/api/v1/bookings": () => import("@/app/api/v1/bookings/route"),
   "/api/v1/bookings/:id": () => import("@/app/api/v1/bookings/[id]/route"),
+  "/api/v1/openapi.json": () => import("@/app/api/v1/openapi.json/route"),
+  "/api/v1/poster/copy": () => import("@/app/api/v1/poster/copy/route"),
   "/auth/login": () => import("@/app/auth/login/route"),
   "/auth/callback": () => import("@/app/auth/callback/route"),
   "/auth/logout": () => import("@/app/auth/logout/route"),

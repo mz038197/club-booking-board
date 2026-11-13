@@ -46,9 +46,16 @@
   --room-7: #334155;
   --room-8: #86198f;
 
+  /* 首頁 (landing) dark band: top bar and hero */
+  --hero-bg: #09090b;
+  --hero-fg: #fafafa;
+  --hero-muted: #a1a1aa;
+  --hero-border: #3f3f46;
+
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
   --shadow-tab: 0 1px 2px rgb(0 0 0 / 0.08);
   --shadow-knob: 0 1px 2px rgb(0 0 0 / 0.2);
+  --shadow-float: 0 24px 48px rgb(0 0 0 / 0.12);
 }
 
 body {

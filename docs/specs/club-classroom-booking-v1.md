@@ -4,6 +4,11 @@
 - **技術棧**：未定（交前後端／幕僚長另決）
 - **Notion 草稿**：[規格 v1｜社團教室出借看板＋Agent API](https://app.notion.com/p/3df60fdf66578180a453c6fc69f5511a)
 
+> **部分已被取代（2026-11-13）**：身分、堂課與學生看板的部分改依下列 ADR，與本規格衝突時以 ADR 為準。
+> - [ADR 0003](../adr/0003-identity-comes-from-the-router.md)：學生從 `Authorization: Bearer` 的 router 課堂金鑰取得身分，介面不再收 `student_id`；教師以 router Google 登入。取代本規格「不做：完整帳號權限體系」。
+> - [ADR 0004](../adr/0004-session-belongs-to-a-class-without-an-open-switch.md)：堂課掛在 router 班級下，學生介面不帶 `session_id`，一律進入班級的目前堂課；沒有開放開關，只有暫停（`BOOKING_CLOSED`）；教師可強制取消。取代下方「對齊契約」中學生介面的路徑。
+> - [ADR 0005](../adr/0005-students-see-the-board-through-a-share-link.md)：學生以免登入的分享連結看唯讀看板。
+
 ## 目標
 
 讓學生在課堂用建好的 agent，透過 API 查詢、預約、取消「社團可借教室」；教師為每一堂課設定可借資源，預約／取消結果即時顯示在時間表式看板上。另提供 API 產生宣傳海報**文案**（不出圖）。
@@ -47,7 +52,7 @@
 
 - 海報出圖、複雜審核流、完整帳號權限體系
 - 技術棧選定與綁定
-- 教師從看板「強制取消他人預約」（若需要可另開）
+- 教師從看板「強制取消他人預約」（若需要可另開）——**已被 ADR 0004 取代**：教師可在後台強制取消
 
 ## 驗收條件
 
@@ -68,6 +73,7 @@
 - 教師寫入：`PUT /sessions/{session_id}/slots`，body `{ slots: [{ date, start, end, room }] }`（整批覆寫；已借格被拿掉 → `CONFLICT`）
 - 看板：`GET /sessions/{session_id}/board`
 - 預約：`POST /sessions/{session_id}/bookings`；取消：`DELETE` 該筆預約（僅本人）
+  - **已被 ADR 0003／0004 取代**：學生介面不帶 `session_id`、不收 `student_id`，身分來自 Bearer 課堂金鑰；新增 401（金鑰無效、過期、課堂未開始）與 403 `BOOKING_CLOSED`。新路徑待新版規格定案。
 - 海報：`POST /poster/copy`（只出文案、不出圖）
 - 錯誤碼：`SLOT_TAKEN`、`NOT_OWNER`、`NOT_FOUND`、`INVALID_SLOT`、`INVALID_POSTER`、`INVALID_REQUEST`、`CONFLICT`
   - `INVALID_SLOT`：格子格式／未知格子

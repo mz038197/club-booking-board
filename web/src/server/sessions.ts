@@ -10,6 +10,10 @@ export type Session = {
   paused: boolean;
   /** 預約規則: 每人上限 (1–5) */
   perStudentLimit: number;
+  /** 投影顯示設定: 遮蔽名稱 (投影監看頁 only; never the 分享連結 or the student API) */
+  maskNames: boolean;
+  /** 投影顯示設定: default of 「有人預約時自動跳到那一天」 */
+  autoFollow: boolean;
 };
 
 export type SlotInput = { date: string; start: string; end: string; room: string };
@@ -28,19 +32,33 @@ export function makeSlotId(slot: SlotInput): string {
   return `${slot.date}_${slot.start}-${slot.end}_${slot.room}`;
 }
 
-type SessionRow = { id: string; class_id: number; name: string; paused: boolean; per_student_limit: number };
+type SessionRow = {
+  id: string;
+  class_id: number;
+  name: string;
+  paused: boolean;
+  per_student_limit: number;
+  mask_names: boolean;
+  auto_follow: boolean;
+};
 
 /** The `sessions` columns `toSession` reads (prefix with an alias via `sessionCols("s")`). */
-const sessionCols = (alias = "") =>
-  ["id", "class_id", "name", "paused", "per_student_limit"].map((c) => (alias ? `${alias}.${c}` : c)).join(", ");
+export const sessionCols = (alias = "") =>
+  ["id", "class_id", "name", "paused", "per_student_limit", "mask_names", "auto_follow"]
+    .map((c) => (alias ? `${alias}.${c}` : c))
+    .join(", ");
 
-const toSession = (r: SessionRow): Session => ({
+export const toSession = (r: SessionRow): Session => ({
   id: r.id,
   classId: r.class_id,
   name: r.name,
   paused: r.paused,
   perStudentLimit: r.per_student_limit,
+  maskNames: r.mask_names,
+  autoFollow: r.auto_follow,
 });
+
+export type { SessionRow };
 
 /**
  * 預約規則 columns a new 堂課 copies from the 堂課 it is based on (可借清單 is copied

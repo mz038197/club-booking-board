@@ -23,6 +23,9 @@ export const ROUTES: Record<string, () => Promise<RouteModule>> = {
   "/api/teacher/sessions/:id/slots": () => import("@/app/api/teacher/sessions/[id]/slots/route"),
   "/api/teacher/sessions/:id/slots/generate": () => import("@/app/api/teacher/sessions/[id]/slots/generate/route"),
   "/api/teacher/sessions/:id/slots/:slotId": () => import("@/app/api/teacher/sessions/[id]/slots/[slotId]/route"),
+  "/api/teacher/sessions/:id/monitor": () => import("@/app/api/teacher/sessions/[id]/monitor/route"),
+  "/api/teacher/sessions/:id/display-settings": () =>
+    import("@/app/api/teacher/sessions/[id]/display-settings/route"),
 };
 
 export async function resolveRoute(

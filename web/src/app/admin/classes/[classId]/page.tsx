@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getDeps } from "@/server/deps";
 import { managedClass } from "@/server/http/teacher-auth";
 import { boardOf, sessionById, sessionsOfClass } from "@/server/sessions";
+import { shareLinkOf } from "@/server/share-links";
 import { requireTeacherPage } from "@/server/teacher-page";
 import { ui } from "@/app/ui";
 import { AdminHeader } from "../../admin-header";
@@ -40,14 +41,23 @@ export default async function ClassPage({
     );
   }
 
-  const { db } = await getDeps();
+  const deps = await getDeps();
+  const { db } = deps;
+  const now = deps.now();
   const sessions = await sessionsOfClass(db, cls.id);
   const wanted = (await searchParams).session;
   const picked =
     sessions.find((s) => s.id === wanted) ?? sessions.find((s) => s.isCurrent) ?? sessions[0] ?? null;
   const session = picked ? await sessionById(db, picked.id) : null;
   const ctx: SessionContext | null = session
-    ? { cls, session, isCurrent: picked!.isCurrent, slots: await boardOf(db, session.id) }
+    ? {
+        cls,
+        session,
+        isCurrent: picked!.isCurrent,
+        slots: await boardOf(db, session.id),
+        shareLinkExpiresAt: (await shareLinkOf(db, session.id, now))?.expiresAt.toISOString() ?? null,
+        now,
+      }
     : null;
 
   return (

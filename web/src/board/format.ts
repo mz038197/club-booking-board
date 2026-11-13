@@ -59,3 +59,13 @@ const TIME = new Intl.DateTimeFormat("zh-Hant", {
 export function clockTime(at: string | Date): string {
   return TIME.format(typeof at === "string" ? new Date(at) : at);
 }
+
+/** Time left until `expiresAt` (分享連結): 「剩 11 小時 58 分」, 「剩 5 分」, 「已過期」. */
+export function remainingText(expiresAt: string | Date, now: Date): string {
+  const ms = new Date(expiresAt).getTime() - now.getTime();
+  if (ms <= 0) return "已過期";
+  const minutes = Math.ceil(ms / 60_000);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `剩 ${h} 小時 ${m} 分` : `剩 ${m} 分`;
+}

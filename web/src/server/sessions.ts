@@ -10,11 +10,15 @@ export type Session = {
   paused: boolean;
   /** 預約規則: 每人上限 (1–5) */
   perStudentLimit: number;
+  /** 預約規則: 上課當天可預約與取消的時間窗 (Asia/Taipei HH:MM, start inclusive, end exclusive); null = 不限 */
+  bookingWindow: BookingWindow | null;
   /** 投影顯示設定: 遮蔽名稱 (投影監看頁 only; never the 分享連結 or the student API) */
   maskNames: boolean;
   /** 投影顯示設定: default of 「有人預約時自動跳到那一天」 */
   autoFollow: boolean;
 };
+
+export type BookingWindow = { start: string; end: string };
 
 export type SlotInput = { date: string; start: string; end: string; room: string };
 
@@ -38,13 +42,25 @@ type SessionRow = {
   name: string;
   paused: boolean;
   per_student_limit: number;
+  booking_window_start: string | null;
+  booking_window_end: string | null;
   mask_names: boolean;
   auto_follow: boolean;
 };
 
 /** The `sessions` columns `toSession` reads (prefix with an alias via `sessionCols("s")`). */
 export const sessionCols = (alias = "") =>
-  ["id", "class_id", "name", "paused", "per_student_limit", "mask_names", "auto_follow"]
+  [
+    "id",
+    "class_id",
+    "name",
+    "paused",
+    "per_student_limit",
+    "booking_window_start",
+    "booking_window_end",
+    "mask_names",
+    "auto_follow",
+  ]
     .map((c) => (alias ? `${alias}.${c}` : c))
     .join(", ");
 
@@ -54,6 +70,10 @@ export const toSession = (r: SessionRow): Session => ({
   name: r.name,
   paused: r.paused,
   perStudentLimit: r.per_student_limit,
+  bookingWindow:
+    r.booking_window_start && r.booking_window_end
+      ? { start: r.booking_window_start, end: r.booking_window_end }
+      : null,
   maskNames: r.mask_names,
   autoFollow: r.auto_follow,
 });
@@ -62,9 +82,9 @@ export type { SessionRow };
 
 /**
  * 預約規則 columns a new 堂課 copies from the 堂課 it is based on (可借清單 is copied
- * separately; 預約 never). Add new rule columns here (e.g. #19's time window).
+ * separately; 預約 never; 暫停 never). Add new rule columns here.
  */
-export const COPIED_RULE_COLUMNS = ["per_student_limit"] as const;
+export const COPIED_RULE_COLUMNS = ["per_student_limit", "booking_window_start", "booking_window_end"] as const;
 
 /**
  * Creates a 堂課; it becomes its class's 目前堂課. With `copyFrom` (a 堂課 of the
@@ -114,6 +134,23 @@ async function setCurrent(db: Db, classId: number, sessionId: string): Promise<v
 /** Makes a 堂課 its 班級's 目前堂課 (e.g. switching back to an older one). */
 export async function makeCurrentSession(db: Db, session: Session): Promise<void> {
   await setCurrent(db, session.classId, session.id);
+}
+
+/** 暫停／恢復 a 堂課's 預約 and 取消 (queries are unaffected). */
+export async function setPaused(db: Db, sessionId: string, paused: boolean): Promise<void> {
+  await db.query(`UPDATE sessions SET paused = $2 WHERE id = $1`, [sessionId, paused]);
+}
+
+/** Sets a 堂課's 預約規則 (每人上限 1–5, 時間窗 or null). Validate first (`parseBookingRules`). */
+export async function setBookingRules(
+  db: Db,
+  sessionId: string,
+  rules: { perStudentLimit: number; bookingWindow: BookingWindow | null },
+): Promise<void> {
+  await db.query(
+    `UPDATE sessions SET per_student_limit = $2, booking_window_start = $3, booking_window_end = $4 WHERE id = $1`,
+    [sessionId, rules.perStudentLimit, rules.bookingWindow?.start ?? null, rules.bookingWindow?.end ?? null],
+  );
 }
 
 export async function sessionById(db: Db, id: string): Promise<Session | null> {

@@ -1,3 +1,4 @@
+import { assertBookingOpen } from "@/server/booking-rules";
 import { cancelBooking } from "@/server/bookings";
 import { studentRoute } from "@/server/http/student-route";
 
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const DELETE = studentRoute<{ id: string }>(
   "cancelBooking",
   async ({ deps, student, session, log }, { id }) => {
+    assertBookingOpen(session, deps.now());
     await cancelBooking(deps.db, {
       sessionId: session.id,
       bookingId: id,

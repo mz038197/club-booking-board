@@ -12,6 +12,10 @@ export type Session = {
   perStudentLimit: number;
   /** 預約規則: 上課當天可預約與取消的時間窗 (Asia/Taipei HH:MM, start inclusive, end exclusive); null = 不限 */
   bookingWindow: BookingWindow | null;
+  /** 投影顯示設定: 遮蔽名稱 (投影監看頁 only; never the 分享連結 or the student API) */
+  maskNames: boolean;
+  /** 投影顯示設定: default of 「有人預約時自動跳到那一天」 */
+  autoFollow: boolean;
 };
 
 export type BookingWindow = { start: string; end: string };
@@ -40,15 +44,27 @@ type SessionRow = {
   per_student_limit: number;
   booking_window_start: string | null;
   booking_window_end: string | null;
+  mask_names: boolean;
+  auto_follow: boolean;
 };
 
 /** The `sessions` columns `toSession` reads (prefix with an alias via `sessionCols("s")`). */
-const sessionCols = (alias = "") =>
-  ["id", "class_id", "name", "paused", "per_student_limit", "booking_window_start", "booking_window_end"]
+export const sessionCols = (alias = "") =>
+  [
+    "id",
+    "class_id",
+    "name",
+    "paused",
+    "per_student_limit",
+    "booking_window_start",
+    "booking_window_end",
+    "mask_names",
+    "auto_follow",
+  ]
     .map((c) => (alias ? `${alias}.${c}` : c))
     .join(", ");
 
-const toSession = (r: SessionRow): Session => ({
+export const toSession = (r: SessionRow): Session => ({
   id: r.id,
   classId: r.class_id,
   name: r.name,
@@ -58,7 +74,11 @@ const toSession = (r: SessionRow): Session => ({
     r.booking_window_start && r.booking_window_end
       ? { start: r.booking_window_start, end: r.booking_window_end }
       : null,
+  maskNames: r.mask_names,
+  autoFollow: r.auto_follow,
 });
+
+export type { SessionRow };
 
 /**
  * 預約規則 columns a new 堂課 copies from the 堂課 it is based on (可借清單 is copied

@@ -20,9 +20,12 @@ export const ROUTES: Record<string, () => Promise<RouteModule>> = {
   "/api/teacher/sessions/:id/current": () => import("@/app/api/teacher/sessions/[id]/current/route"),
   "/api/teacher/sessions/:id/rules": () => import("@/app/api/teacher/sessions/[id]/rules/route"),
   "/api/teacher/sessions/:id/pause": () => import("@/app/api/teacher/sessions/[id]/pause/route"),
-  "/api/teacher/sessions/:id/slots":() => import("@/app/api/teacher/sessions/[id]/slots/route"),
+  "/api/teacher/sessions/:id/slots": () => import("@/app/api/teacher/sessions/[id]/slots/route"),
   "/api/teacher/sessions/:id/slots/generate": () => import("@/app/api/teacher/sessions/[id]/slots/generate/route"),
   "/api/teacher/sessions/:id/slots/:slotId": () => import("@/app/api/teacher/sessions/[id]/slots/[slotId]/route"),
+  "/api/teacher/sessions/:id/monitor": () => import("@/app/api/teacher/sessions/[id]/monitor/route"),
+  "/api/teacher/sessions/:id/display-settings": () =>
+    import("@/app/api/teacher/sessions/[id]/display-settings/route"),
 };
 
 export async function resolveRoute(

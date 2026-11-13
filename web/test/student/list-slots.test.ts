@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FAKE_KEYS, FAKE_NOTICES } from "@/server/router-gateway/fake";
 import { createSession, addSlots } from "@/server/sessions";
 import { setupTestApp, type TestApp } from "../helpers/app";
-import { seedBooking } from "../helpers/seed";
 
 let app: TestApp;
 
@@ -23,12 +22,11 @@ describe("GET /api/v1/slots — 列出目前堂課的可借格", () => {
       slot("2026-12-09", "13:00", "14:00", "A102"),
       slot("2026-12-08", "10:00", "11:00", "B201"),
     ]);
-    await seedBooking(app.db, {
-      sessionId: session.id,
-      slotId: "2026-12-09_13:00-14:00_A102",
-      studentId: 1235,
-      displayName: "08李小華",
+    const booked = await app.request("POST", "/api/v1/bookings", {
+      key: FAKE_KEYS.studentB,
+      body: { slot_id: "2026-12-09_13:00-14:00_A102" },
     });
+    expect(booked.status).toBe(201);
 
     const res = await app.request("GET", "/api/v1/slots", { key: FAKE_KEYS.studentA });
 

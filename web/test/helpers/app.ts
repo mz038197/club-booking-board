@@ -10,6 +10,8 @@ export type RequestOptions = {
   key?: string;
   /** JSON body. */
   body?: unknown;
+  /** Sent as-is (for malformed bodies); ignored when `body` is set. */
+  rawBody?: string;
   headers?: Record<string, string>;
   /** Sent as the `Cookie` header (see `teacherCookie` in ./teacher.ts). */
   cookies?: Record<string, string>;
@@ -58,7 +60,7 @@ export async function setupTestApp(
             .join("; "),
         );
       }
-      let body: string | undefined;
+      let body: string | undefined = options.rawBody;
       if (options.body !== undefined) {
         headers.set("content-type", "application/json");
         body = JSON.stringify(options.body);

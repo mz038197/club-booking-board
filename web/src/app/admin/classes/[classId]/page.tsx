@@ -1,19 +1,36 @@
 import { notFound } from "next/navigation";
+import { adminLogOf } from "@/server/admin-log";
+import { sessionBookingsOf } from "@/server/bookings";
+import type { Db } from "@/server/db";
 import { getDeps } from "@/server/deps";
+import { statsOf } from "@/server/live";
+import { rosterOf } from "@/server/students";
 import { managedClass } from "@/server/http/teacher-auth";
 import { boardOf, sessionById, sessionsOfClass } from "@/server/sessions";
 import { requireTeacherPage } from "@/server/teacher-page";
 import { ui } from "@/app/ui";
 import { AdminHeader } from "../../admin-header";
+import { LiveMode, type LiveData } from "./live-mode";
 import { prepSteps, type SessionContext } from "./prep-steps";
 import { SessionBar } from "./session-bar";
 import { Workspace } from "./workspace";
 
 export const dynamic = "force-dynamic";
 
+/** Everything the ② 上課中 view shows, read in one go. */
+async function liveData(db: Db, sessionId: string): Promise<LiveData> {
+  const [stats, bookings, roster, adminLog] = await Promise.all([
+    statsOf(db, sessionId),
+    sessionBookingsOf(db, sessionId),
+    rosterOf(db, sessionId),
+    adminLogOf(db, sessionId, 50),
+  ]);
+  return { sessionId, stats, bookings, roster, adminLog };
+}
+
 /**
  * 班級頁: 堂課選單 (目前堂課, 新堂課, 切回) + the selected 堂課's workspace
- * (① 課前準備 wizard; ② 上課中 arrives with #20). `?session=<id>` picks a 堂課;
+ * (① 課前準備 wizard; ② 上課中). `?session=<id>` picks a 堂課;
  * default is the 目前堂課.
  */
 export default async function ClassPage({
@@ -60,7 +77,13 @@ export default async function ClassPage({
           selectedId={picked?.id ?? null}
           sessions={sessions.map((s) => ({ id: s.id, name: s.name, isCurrent: s.isCurrent, slotCount: s.slotCount }))}
         />
-        {ctx ? <Workspace key={ctx.session.id} steps={prepSteps(ctx)} /> : null}
+        {ctx ? (
+          <Workspace
+            key={ctx.session.id}
+            steps={prepSteps(ctx)}
+            live={<LiveMode data={await liveData(db, ctx.session.id)} />}
+          />
+        ) : null}
       </main>
     </>
   );

@@ -10,6 +10,8 @@ export type RosterEntry = {
   firstCallAt: string;
   /** ISO time of the student's first successful 預約 in the 堂課, if any */
   firstBookedAt: string | null;
+  /** 可借格 the student holds in the 堂課 now */
+  bookedCount: number;
 };
 
 /** Records the 學生 and their latest 顯示名稱 (on every passing Key Check). */
@@ -59,8 +61,11 @@ export async function rosterOf(db: Db, sessionId: string): Promise<RosterEntry[]
     display_name: string;
     first_call_at: Date | string;
     first_booked_at: Date | string | null;
+    booked_count: number | string;
   }>(
-    `SELECT ss.student_id, s.display_name, ss.first_call_at, ss.first_booked_at
+    `SELECT ss.student_id, s.display_name, ss.first_call_at, ss.first_booked_at,
+            (SELECT count(*) FROM bookings b
+              WHERE b.session_id = ss.session_id AND b.student_id = ss.student_id) AS booked_count
        FROM session_students ss JOIN students s ON s.student_id = ss.student_id
       WHERE ss.session_id = $1
       ORDER BY ss.first_call_at, ss.student_id`,
@@ -71,5 +76,6 @@ export async function rosterOf(db: Db, sessionId: string): Promise<RosterEntry[]
     displayName: r.display_name,
     firstCallAt: new Date(r.first_call_at).toISOString(),
     firstBookedAt: r.first_booked_at ? new Date(r.first_booked_at).toISOString() : null,
+    bookedCount: Number(r.booked_count),
   }));
 }

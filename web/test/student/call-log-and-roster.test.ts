@@ -1,13 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { apiCallsOf } from "@/server/call-log";
 import type { RouterGateway } from "@/server/router-gateway";
-import { createFakeGateway, FAKE_KEYS } from "@/server/router-gateway/fake";
-import { rosterOf } from "@/server/students";
+import { createFakeGateway, FAKE_KEYS, FAKE_TEACHERS } from "@/server/router-gateway/fake";
 import { addSlots, createSession, type Session } from "@/server/sessions";
 import { setupTestApp, type TestApp } from "../helpers/app";
-
-// The call log and 名冊 have no endpoint yet (#20); read them through the
-// data functions the teacher endpoints will expose.
+import { teacherCookie } from "../helpers/teacher";
 
 const A101 = "2026-12-09_13:00-14:00_A101";
 const A102 = "2026-12-09_13:00-14:00_A102";
@@ -50,6 +46,19 @@ const at = (iso: string) => {
 const book = (key: string, slotId: string) =>
   app.request("POST", "/api/v1/bookings", { key, body: { slot_id: slotId } });
 
+// Read through the teacher endpoints (as the 上課模式 and monitor do).
+const asTeacher = () => ({ cookies: teacherCookie(app, FAKE_TEACHERS.teacher) });
+const apiCalls = async (sessionId: string): Promise<{ action: string; display_name: string }[]> => {
+  const res = await app.request("GET", `/api/teacher/sessions/${sessionId}/api-calls`, asTeacher());
+  expect(res.status).toBe(200);
+  return (await res.json()).calls;
+};
+const roster = async (sessionId: string): Promise<{ student_id: number; display_name: string }[]> => {
+  const res = await app.request("GET", `/api/teacher/sessions/${sessionId}/roster`, asTeacher());
+  expect(res.status).toBe(200);
+  return (await res.json()).students;
+};
+
 describe("API 呼叫紀錄", () => {
   it("records every student call, successes and failures, with time, student, action, slot, status and code", async () => {
     at("2026-12-09T05:00:01.000Z");
@@ -71,35 +80,35 @@ describe("API 呼叫紀錄", () => {
     at("2026-12-09T05:00:09.000Z");
     await app.request("DELETE", `/api/v1/bookings/${booking_id}`, { key: FAKE_KEYS.studentB });
 
-    const calls = await apiCallsOf(app.db, session.id);
+    const calls = await apiCalls(session.id);
 
-    const A = { studentId: 1234, displayName: "07王小明" };
-    const B = { studentId: 1235, displayName: "08李小華" };
+    const A = { student_id: 1234, display_name: "07王小明" };
+    const B = { student_id: 1235, display_name: "08李小華" };
     expect(calls).toEqual([
-      { at: "2026-12-09T05:00:01.000Z", ...A, action: "listSlots", slotId: null, status: 200, code: null },
-      { at: "2026-12-09T05:00:02.000Z", ...A, action: "bookSlot", slotId: A101, status: 201, code: null },
-      { at: "2026-12-09T05:00:03.000Z", ...B, action: "bookSlot", slotId: A101, status: 409, code: "SLOT_TAKEN" },
-      { at: "2026-12-09T05:00:04.000Z", ...B, action: "bookSlot", slotId: "nonsense", status: 400, code: "INVALID_SLOT" },
-      { at: "2026-12-09T05:00:05.000Z", ...B, action: "bookSlot", slotId: A102, status: 201, code: null },
-      { at: "2026-12-09T05:00:06.000Z", ...A, action: "cancelBooking", slotId: A102, status: 403, code: "NOT_OWNER" },
-      { at: "2026-12-09T05:00:07.000Z", ...B, action: "listMyBookings", slotId: null, status: 200, code: null },
-      { at: "2026-12-09T05:00:08.000Z", ...B, action: "bookSlot", slotId: null, status: 400, code: "INVALID_REQUEST" },
-      { at: "2026-12-09T05:00:09.000Z", ...B, action: "cancelBooking", slotId: A102, status: 204, code: null },
+      { at: "2026-12-09T05:00:01.000Z", ...A, action: "listSlots", slot_id: null, status: 200, code: null },
+      { at: "2026-12-09T05:00:02.000Z", ...A, action: "bookSlot", slot_id: A101, status: 201, code: null },
+      { at: "2026-12-09T05:00:03.000Z", ...B, action: "bookSlot", slot_id: A101, status: 409, code: "SLOT_TAKEN" },
+      { at: "2026-12-09T05:00:04.000Z", ...B, action: "bookSlot", slot_id: "nonsense", status: 400, code: "INVALID_SLOT" },
+      { at: "2026-12-09T05:00:05.000Z", ...B, action: "bookSlot", slot_id: A102, status: 201, code: null },
+      { at: "2026-12-09T05:00:06.000Z", ...A, action: "cancelBooking", slot_id: A102, status: 403, code: "NOT_OWNER" },
+      { at: "2026-12-09T05:00:07.000Z", ...B, action: "listMyBookings", slot_id: null, status: 200, code: null },
+      { at: "2026-12-09T05:00:08.000Z", ...B, action: "bookSlot", slot_id: null, status: 400, code: "INVALID_REQUEST" },
+      { at: "2026-12-09T05:00:09.000Z", ...B, action: "cancelBooking", slot_id: A102, status: 204, code: null },
     ]);
   });
 
   it("records a cancel of an unknown 預約 as 404 NOT_FOUND without a slot", async () => {
     await app.request("DELETE", "/api/v1/bookings/not-a-uuid", { key: FAKE_KEYS.studentA });
 
-    const [call] = await apiCallsOf(app.db, session.id);
-    expect(call).toMatchObject({ action: "cancelBooking", slotId: null, status: 404, code: "NOT_FOUND" });
+    const [call] = await apiCalls(session.id);
+    expect(call).toMatchObject({ action: "cancelBooking", slot_id: null, status: 404, code: "NOT_FOUND" });
   });
 
   it("writes nothing when the class has no 堂課 or the key is refused", async () => {
     await app.request("GET", "/api/v1/slots", { key: FAKE_KEYS.otherClass });
     await book(FAKE_KEYS.expired, A101);
 
-    expect(await apiCallsOf(app.db, session.id)).toEqual([]);
+    expect(await apiCalls(session.id)).toEqual([]);
   });
 
   it("keeps each 堂課's log separate", async () => {
@@ -107,8 +116,8 @@ describe("API 呼叫紀錄", () => {
     const next = await createSession(app.db, { classId: 56, name: "下週" });
     await app.request("GET", "/api/v1/bookings", { key: FAKE_KEYS.studentA });
 
-    expect((await apiCallsOf(app.db, session.id)).map((c) => c.action)).toEqual(["listSlots"]);
-    expect((await apiCallsOf(app.db, next.id)).map((c) => c.action)).toEqual(["listMyBookings"]);
+    expect((await apiCalls(session.id)).map((c) => c.action)).toEqual(["listSlots"]);
+    expect((await apiCalls(next.id)).map((c) => c.action)).toEqual(["listMyBookings"]);
   });
 });
 
@@ -126,18 +135,20 @@ describe("名冊（堂課學生）", () => {
     const { booking_id } = await (await book(FAKE_KEYS.studentA, A102)).json();
     await app.request("DELETE", `/api/v1/bookings/${booking_id}`, { key: FAKE_KEYS.studentA });
 
-    expect(await rosterOf(app.db, session.id)).toEqual([
+    expect(await roster(session.id)).toEqual([
       {
-        studentId: 1235,
-        displayName: "08李小華",
-        firstCallAt: "2026-12-09T05:01:00.000Z",
-        firstBookedAt: null,
+        student_id: 1235,
+        display_name: "08李小華",
+        first_call_at: "2026-12-09T05:01:00.000Z",
+        first_booked_at: null,
+        booked_count: 0,
       },
       {
-        studentId: 1234,
-        displayName: "07王小明",
-        firstCallAt: "2026-12-09T05:02:00.000Z",
-        firstBookedAt: "2026-12-09T05:03:00.000Z",
+        student_id: 1234,
+        display_name: "07王小明",
+        first_call_at: "2026-12-09T05:02:00.000Z",
+        first_booked_at: "2026-12-09T05:03:00.000Z",
+        booked_count: 1,
       },
     ]);
   });
@@ -149,17 +160,17 @@ describe("名冊（堂課學生）", () => {
     const board = await (await app.request("GET", "/api/v1/slots", { key: FAKE_KEYS.studentA })).json();
 
     expect(board.slots[0]).toMatchObject({ slot_id: A101, booked_by: "07王大明" });
-    expect((await rosterOf(app.db, session.id))[0].displayName).toBe("07王大明");
-    const calls = await apiCallsOf(app.db, session.id);
-    expect(calls.map((c) => c.displayName)).toEqual(["07王大明", "07王大明"]);
+    expect((await roster(session.id))[0].display_name).toBe("07王大明");
+    const calls = await apiCalls(session.id);
+    expect(calls.map((c) => c.display_name)).toEqual(["07王大明", "07王大明"]);
   });
 
   it("keeps a separate 名冊 per 堂課", async () => {
     await app.request("GET", "/api/v1/slots", { key: FAKE_KEYS.studentA });
     const next = await createSession(app.db, { classId: 56, name: "下週" });
 
-    expect(await rosterOf(app.db, next.id)).toEqual([]);
+    expect(await roster(next.id)).toEqual([]);
     await app.request("GET", "/api/v1/slots", { key: FAKE_KEYS.studentB });
-    expect((await rosterOf(app.db, next.id)).map((r) => r.studentId)).toEqual([1235]);
+    expect((await roster(next.id)).map((r) => r.student_id)).toEqual([1235]);
   });
 });

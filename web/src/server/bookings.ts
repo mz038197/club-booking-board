@@ -93,6 +93,43 @@ export async function cancelBooking(
   });
 }
 
+/** A 預約 as the teacher sees it: with the student and their latest 顯示名稱. */
+export type SessionBooking = Booking & { student_id: number; display_name: string };
+
+/** Every 預約 of a 堂課, in board order. */
+export async function sessionBookingsOf(db: Db, sessionId: string): Promise<SessionBooking[]> {
+  const rows = await db.query<BookingRow & { student_id: number; display_name: string }>(
+    `SELECT b.id, b.slot_id, s.date, s.start_time, s.end_time, s.room, b.created_at,
+            b.student_id, st.display_name
+       FROM bookings b
+       JOIN slots s ON s.session_id = b.session_id AND s.slot_id = b.slot_id
+       JOIN students st ON st.student_id = b.student_id
+      WHERE b.session_id = $1
+      ORDER BY s.date, s.start_time, s.room`,
+    [sessionId],
+  );
+  return rows.map((r) => ({ ...toBooking(r), student_id: r.student_id, display_name: r.display_name }));
+}
+
+/**
+ * 強制取消: the teacher deletes any 預約 of the 堂課 (no owner check).
+ * Returns what was cancelled; throws 404 NOT_FOUND (no such 預約 in this 堂課).
+ */
+export async function forceCancelBooking(
+  db: Db,
+  input: { sessionId: string; bookingId: string },
+): Promise<{ slotId: string; studentId: number; displayName: string }> {
+  if (!UUID.test(input.bookingId)) throw new ApiError(404, "NOT_FOUND", "找不到這筆預約");
+  const [row] = await db.query<{ slot_id: string; student_id: number; display_name: string }>(
+    `DELETE FROM bookings b USING students st
+      WHERE b.id = $1 AND b.session_id = $2 AND st.student_id = b.student_id
+      RETURNING b.slot_id, b.student_id, st.display_name`,
+    [input.bookingId, input.sessionId],
+  );
+  if (!row) throw new ApiError(404, "NOT_FOUND", "找不到這筆預約");
+  return { slotId: row.slot_id, studentId: row.student_id, displayName: row.display_name };
+}
+
 /** 我的預約: a student's 預約 in a 堂課, in board order. */
 export async function bookingsOf(db: Db, sessionId: string, studentId: number): Promise<Booking[]> {
   const rows = await db.query<BookingRow>(

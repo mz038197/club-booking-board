@@ -1,3 +1,4 @@
+import { logAdminAction, type AdminAction } from "../admin-log";
 import type { ClassRef } from "../router-gateway";
 import { getDeps, type Deps } from "../deps";
 import { sessionById, type Session } from "../sessions";
@@ -49,6 +50,19 @@ export function sessionRoute<P extends { id: string }>(
     requireClassAccess(access, session.classId);
     return fn({ req, deps, access, session, params });
   });
+}
+
+/**
+ * Writes one 教師操作紀錄 entry for the logged-in teacher, now. Call it from a teacher
+ * route after the action succeeded (refused actions and previews are not logged).
+ */
+export async function logAction(
+  { deps, access }: { deps: Deps; access: TeacherAccess },
+  sessionId: string,
+  action: AdminAction,
+  message: string,
+): Promise<void> {
+  await logAdminAction(deps.db, { sessionId, at: deps.now(), teacher: access.teacher, action, message });
 }
 
 /** The JSON object body of a request; 400 INVALID_REQUEST when it is not one. */

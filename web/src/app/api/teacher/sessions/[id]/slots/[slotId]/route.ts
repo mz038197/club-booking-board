@@ -1,10 +1,12 @@
-import { sessionRoute } from "@/server/http/teacher-route";
+import { logAction, sessionRoute } from "@/server/http/teacher-route";
 import { removeSlot } from "@/server/slot-list";
 
 export const dynamic = "force-dynamic";
 
 /** 移除單格；已借 → 409 CONFLICT，不存在 → 404 NOT_FOUND. */
-export const DELETE = sessionRoute<{ id: string; slotId: string }>(async ({ deps, session, params }) => {
+export const DELETE = sessionRoute<{ id: string; slotId: string }>(async (args) => {
+  const { deps, session, params } = args;
   await removeSlot(deps.db, session.id, params.slotId);
+  await logAction(args, session.id, "removeSlot", `移除可借格 ${params.slotId}`);
   return new Response(null, { status: 204 });
 });

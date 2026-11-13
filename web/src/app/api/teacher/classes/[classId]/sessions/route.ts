@@ -1,5 +1,5 @@
 import { ApiError } from "@/server/http/errors";
-import { classRoute, isUuid, jsonBody } from "@/server/http/teacher-route";
+import { classRoute, isUuid, jsonBody, logAction } from "@/server/http/teacher-route";
 import { createSession, sessionsOfClass, type SessionSummary } from "@/server/sessions";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,8 @@ export const GET = classRoute(async ({ deps, cls }) => {
  * 建立堂課 `{ name, copy_from? }`：成為目前堂課；`copy_from` 為同班舊堂課時
  * 複製可借清單與預約規則（不含預約）.
  */
-export const POST = classRoute(async ({ req, deps, cls }) => {
+export const POST = classRoute(async (args) => {
+  const { req, deps, cls } = args;
   const body = await jsonBody(req);
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name || name.length > 100) {
@@ -41,6 +42,14 @@ export const POST = classRoute(async ({ req, deps, cls }) => {
     name,
     copyFrom: copying ? copyFrom : undefined,
   });
+  await logAction(
+    args,
+    session.id,
+    "createSession",
+    copying
+      ? `建立堂課「${session.name}」（複製可借清單與預約規則，不含預約），已成為目前堂課`
+      : `建立堂課「${session.name}」，已成為目前堂課`,
+  );
   return Response.json(
     { session: { id: session.id, class_id: session.classId, name: session.name, is_current: true } },
     { status: 201 },

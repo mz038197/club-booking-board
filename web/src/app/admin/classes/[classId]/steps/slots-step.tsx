@@ -181,7 +181,7 @@ function SlotGenerator({ sessionId, slots }: { sessionId: string; slots: BoardSl
           </button>
         </form>
       </Field>
-      <div style={{ ...ui.row, justifyContent: "space-between", borderTop: "1px solid #e4e4e7", paddingTop: 12 }}>
+      <div style={{ ...ui.row, justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 12 }}>
         <span style={{ fontSize: 14 }} data-testid="generate-preview">
           {dates.length} 天 × {times.length} 時段 × {rooms.length} 間 ={" "}
           <strong>{dates.length * times.length * rooms.length}</strong> 格
@@ -192,7 +192,7 @@ function SlotGenerator({ sessionId, slots }: { sessionId: string; slots: BoardSl
         </button>
       </div>
       {message ? (
-        <p style={message.ok ? { ...ui.muted, margin: 0, color: "#166534" } : { ...ui.alert, margin: 0 }}>{message.text}</p>
+        <p style={message.ok ? { ...ui.muted, margin: 0, color: "var(--success-fg)" } : { ...ui.alert, margin: 0 }}>{message.text}</p>
       ) : null}
     </section>
   );
@@ -236,10 +236,10 @@ function SlotList({ sessionId, slots }: { sessionId: string; slots: BoardSlot[] 
       {slots.length === 0 ? (
         <p style={{ ...ui.muted, margin: 0 }}>這堂課還沒有可借格。</p>
       ) : (
-        <div style={{ border: "1px solid #e4e4e7", borderRadius: 8, maxHeight: 360, overflow: "auto" }}>
+        <div style={{ border: "1px solid var(--border)", borderRadius: 8, maxHeight: 360, overflow: "auto" }}>
           {dates.map((d) => (
             <div key={d}>
-              <div style={{ position: "sticky", top: 0, background: "#f4f4f5", padding: "4px 12px", fontSize: 13, fontWeight: 600 }}>
+              <div style={{ position: "sticky", top: 0, background: "var(--muted)", padding: "4px 12px", fontSize: 13, fontWeight: 600 }}>
                 {shortDate(d)}
               </div>
               {slots
@@ -253,7 +253,7 @@ function SlotList({ sessionId, slots }: { sessionId: string; slots: BoardSlot[] 
                       alignItems: "center",
                       gap: 8,
                       padding: "6px 12px",
-                      borderTop: "1px solid #f4f4f5",
+                      borderTop: "1px solid var(--muted)",
                       fontSize: 14,
                     }}
                   >
@@ -261,7 +261,7 @@ function SlotList({ sessionId, slots }: { sessionId: string; slots: BoardSlot[] 
                       {s.start}–{s.end}
                     </span>
                     <span>{s.room}</span>
-                    <span style={s.status === "booked" ? {} : { color: "#16a34a" }}>
+                    <span style={s.status === "booked" ? {} : { color: "var(--success)" }}>
                       {s.status === "booked" ? `已借・${s.booked_by}` : "可借"}
                     </span>
                     {s.status === "booked" ? (
@@ -327,7 +327,7 @@ function Overwrite({ sessionId, slots }: { sessionId: string; slots: BoardSlot[]
           style={{ ...ui.input, ...ui.mono, width: "100%", boxSizing: "border-box" }}
         />
         {message ? (
-          <p style={message.ok ? { ...ui.muted, margin: 0, color: "#166534" } : { ...ui.alert, margin: 0 }}>{message.text}</p>
+          <p style={message.ok ? { ...ui.muted, margin: 0, color: "var(--success-fg)" } : { ...ui.alert, margin: 0 }}>{message.text}</p>
         ) : null}
         <div>
           <button type="button" style={ui.buttonPrimary} disabled={busy} onClick={save}>

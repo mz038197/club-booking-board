@@ -9,9 +9,7 @@ const INVALID = "請送出 JSON：{ mask_names?: boolean, auto_follow?: boolean 
 /** 投影顯示設定: 遮蔽名稱 / 自動跳日 of one 堂課. Body fields are optional; at least one. */
 export const PATCH = sessionRoute(async (args) => {
   const { req, deps, session } = args;
-  const { mask_names, auto_follow } = await jsonBody(req).catch(() => {
-    throw new ApiError(400, "INVALID_REQUEST", INVALID);
-  });
+  const { mask_names, auto_follow } = await jsonBody(req);
   const ok = (v: unknown): v is boolean | undefined => v === undefined || typeof v === "boolean";
   if (!ok(mask_names) || !ok(auto_follow) || (mask_names === undefined && auto_follow === undefined)) {
     throw new ApiError(400, "INVALID_REQUEST", INVALID);

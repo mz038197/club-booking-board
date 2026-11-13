@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FAKE_KEYS, FAKE_TEACHERS } from "@/server/router-gateway/fake";
 import type { Teacher } from "@/server/router-gateway";
 import { addSlots, createSession } from "@/server/sessions";
@@ -8,6 +8,7 @@ import { teacherCookie } from "../helpers/teacher";
 let app: TestApp;
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await app.close();
 });
 
@@ -188,6 +189,8 @@ describe("學生分享連結 — 教師後台", () => {
   });
 
   it("hands out a share URL on this site", async () => {
+    vi.stubEnv("PUBLIC_BASE_URL", "");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
     app = await setupTestApp();
     const session = await classWithSession();
 
@@ -195,6 +198,30 @@ describe("學生分享連結 — 教師後台", () => {
 
     expect(link.url).toBe(`http://localhost/share/${link.token}`);
     expect(link.token.length).toBeGreaterThanOrEqual(43);
+  });
+
+  it("builds the share URL on PUBLIC_BASE_URL, not the origin the teacher came in on", async () => {
+    vi.stubEnv("PUBLIC_BASE_URL", "https://booking.example.org/");
+    app = await setupTestApp();
+    const session = await classWithSession();
+
+    const link = await generate(session.id);
+
+    expect(link.url).toBe(`https://booking.example.org/share/${link.token}`);
+  });
+
+  it("logs a new link (not 重新產生) when the previous one had already expired", async () => {
+    let clock = new Date("2026-12-16T03:00:00Z");
+    app = await setupTestApp({ now: () => clock });
+    const session = await classWithSession();
+    await generate(session.id);
+    clock = new Date("2026-12-16T16:00:00Z"); // 13 h later: the first link is dead
+
+    await generate(session.id);
+
+    const res = await asTeacher("GET", `/api/teacher/sessions/${session.id}/admin-log`);
+    const messages = (await res.json()).entries.map((e: { message: string }) => e.message);
+    expect(messages).toEqual(["已產生分享連結（12 小時後失效）", "已產生分享連結（12 小時後失效）"]);
   });
 
   it("never stores the token itself", async () => {

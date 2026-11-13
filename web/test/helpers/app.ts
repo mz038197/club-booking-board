@@ -25,20 +25,27 @@ export type TestApp = {
   close(): Promise<void>;
 };
 
-/**
- * Fresh test DB + fake router gateway, installed as the app's deps.
- * Override `gateway` or `now` to change them for one test.
- */
 export const TEST_SESSION_SECRET = "test-session-secret-0123456789abcdef";
 
+/**
+ * The app clock unless a test passes `now`: a fixed instant (a Wednesday, 11:00 in
+ * Asia/Taipei), so no test depends on when or where the suite runs.
+ */
+export const TEST_NOW = new Date("2026-12-16T03:00:00.000Z");
+
+/**
+ * Fresh test DB + fake router gateway, installed as the app's deps.
+ * Override `gateway` or `now` to change them for one test. `realPostgres: true`
+ * runs on a fresh database on TEST_DATABASE_URL instead of PGlite (opt-in tests).
+ */
 export async function setupTestApp(
-  overrides: { gateway?: RouterGateway; now?: () => Date } = {},
+  overrides: { gateway?: RouterGateway; now?: () => Date; realPostgres?: boolean } = {},
 ): Promise<TestApp> {
-  const db = await createTestDb();
+  const db = await createTestDb({ realPostgres: overrides.realPostgres });
   const deps: Deps = {
     db,
     gateway: overrides.gateway ?? createFakeGateway({}),
-    now: overrides.now ?? (() => new Date()),
+    now: overrides.now ?? (() => new Date(TEST_NOW)),
     sessionSecret: TEST_SESSION_SECRET,
   };
   setDepsForTests(deps);

@@ -1,7 +1,9 @@
 import { maskDisplayName } from "@/board/mask";
 import type { MonitorCall, MonitorRosterEntry, MonitorSnapshot } from "@/board/snapshot";
+import { apiCallsOf } from "./call-log";
 import type { Db } from "./db";
 import { boardOf, sessionCols, toSession, type Session, type SessionRow } from "./sessions";
+import { rosterOf } from "./students";
 
 /** 投影監看 data: 投影顯示設定 and the monitor snapshot of a 堂課. */
 
@@ -44,30 +46,13 @@ export async function monitorSnapshot(db: Db, session: Session): Promise<Monitor
 
 /** 名冊 (by first call) with each student's current 可借格 count and 教室 (in booking order). */
 async function rosterProgressOf(db: Db, sessionId: string): Promise<MonitorRosterEntry[]> {
-  const rows = await db.query<{
-    student_id: number;
-    display_name: string;
-    first_call_at: Date | string;
-    first_booked_at: Date | string | null;
-    rooms: string[] | null;
-  }>(
-    `SELECT ss.student_id, st.display_name, ss.first_call_at, ss.first_booked_at,
-            (SELECT array_agg(sl.room ORDER BY b.created_at, b.slot_id)
-               FROM bookings b
-               JOIN slots sl ON sl.session_id = b.session_id AND sl.slot_id = b.slot_id
-              WHERE b.session_id = ss.session_id AND b.student_id = ss.student_id) AS rooms
-       FROM session_students ss JOIN students st ON st.student_id = ss.student_id
-      WHERE ss.session_id = $1
-      ORDER BY ss.first_call_at, ss.student_id`,
-    [sessionId],
-  );
-  return rows.map((r) => ({
-    student_id: r.student_id,
-    display_name: r.display_name,
-    first_call_at: new Date(r.first_call_at).toISOString(),
-    first_booked_at: r.first_booked_at ? new Date(r.first_booked_at).toISOString() : null,
-    booked_count: r.rooms?.length ?? 0,
-    rooms: r.rooms ?? [],
+  return (await rosterOf(db, sessionId)).map((r) => ({
+    student_id: r.studentId,
+    display_name: r.displayName,
+    first_call_at: r.firstCallAt,
+    first_booked_at: r.firstBookedAt,
+    booked_count: r.bookedCount,
+    rooms: r.rooms,
   }));
 }
 
@@ -76,42 +61,26 @@ async function rosterProgressOf(db: Db, sessionId: string): Promise<MonitorRoste
  * previous bookSlot failed is marked `retry` (換格重試, the RTR scenario).
  */
 async function recentCallsOf(db: Db, sessionId: string): Promise<MonitorCall[]> {
-  const rows = await db.query<{
-    id: number | string;
-    at: Date | string;
-    student_id: number;
-    display_name: string;
-    action: string;
-    slot_id: string | null;
-    http_status: number;
-    code: string | null;
-  }>(
-    `SELECT c.id, c.at, c.student_id, s.display_name, c.action, c.slot_id, c.http_status, c.code
-       FROM api_calls c JOIN students s ON s.student_id = c.student_id
-      WHERE c.session_id = $1
-      ORDER BY c.at DESC, c.id DESC
-      LIMIT ${MONITOR_CALL_LIMIT}`,
-    [sessionId],
-  );
+  const oldestFirst = await apiCallsOf(db, sessionId, { newest: MONITOR_CALL_LIMIT });
   const lastBookFailed = new Map<number, boolean>();
-  const oldestFirst = rows.reverse().map((r) => {
+  const calls = oldestFirst.map((c) => {
     let retry = false;
-    if (r.action === "bookSlot") {
-      const ok = r.http_status >= 200 && r.http_status < 300;
-      retry = ok && lastBookFailed.get(r.student_id) === true;
-      lastBookFailed.set(r.student_id, !ok);
+    if (c.action === "bookSlot") {
+      const ok = c.status >= 200 && c.status < 300;
+      retry = ok && lastBookFailed.get(c.studentId) === true;
+      lastBookFailed.set(c.studentId, !ok);
     }
     return {
-      id: Number(r.id),
-      at: new Date(r.at).toISOString(),
-      student_id: r.student_id,
-      display_name: r.display_name,
-      action: r.action,
-      slot_id: r.slot_id,
-      status: r.http_status,
-      code: r.code,
+      id: c.id,
+      at: c.at,
+      student_id: c.studentId,
+      display_name: c.displayName,
+      action: c.action,
+      slot_id: c.slotId,
+      status: c.status,
+      code: c.code,
       retry,
     };
   });
-  return oldestFirst.reverse();
+  return calls.reverse();
 }

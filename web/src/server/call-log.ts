@@ -1,4 +1,5 @@
 import type { Db } from "./db";
+import { isoOf, type RowTime } from "./db/rows";
 
 /** API 呼叫紀錄 data access. */
 
@@ -6,6 +7,7 @@ import type { Db } from "./db";
 export type StudentAction = "listSlots" | "listMyBookings" | "bookSlot" | "cancelBooking" | "writePosterCopy";
 
 export type ApiCall = {
+  id: number;
   /** ISO time */
   at: string;
   studentId: number;
@@ -36,10 +38,18 @@ export async function logApiCall(
   );
 }
 
-/** A 堂課's API 呼叫紀錄, oldest first. */
-export async function apiCallsOf(db: Db, sessionId: string): Promise<ApiCall[]> {
+/**
+ * A 堂課's API 呼叫紀錄, oldest first. With `newest`, only that many of the most
+ * recent calls (still oldest first).
+ */
+export async function apiCallsOf(
+  db: Db,
+  sessionId: string,
+  options: { newest?: number } = {},
+): Promise<ApiCall[]> {
   const rows = await db.query<{
-    at: Date | string;
+    id: number | string;
+    at: RowTime;
     student_id: number;
     display_name: string;
     action: string;
@@ -47,14 +57,19 @@ export async function apiCallsOf(db: Db, sessionId: string): Promise<ApiCall[]> 
     http_status: number;
     code: string | null;
   }>(
-    `SELECT c.at, c.student_id, s.display_name, c.action, c.slot_id, c.http_status, c.code
-       FROM api_calls c JOIN students s ON s.student_id = c.student_id
-      WHERE c.session_id = $1
-      ORDER BY c.at, c.id`,
-    [sessionId],
+    `SELECT * FROM (
+       SELECT c.id, c.at, c.student_id, s.display_name, c.action, c.slot_id, c.http_status, c.code
+         FROM api_calls c JOIN students s ON s.student_id = c.student_id
+        WHERE c.session_id = $1
+        ORDER BY c.at DESC, c.id DESC
+        LIMIT $2
+     ) newest
+     ORDER BY at, id`,
+    [sessionId, options.newest ?? null],
   );
   return rows.map((r) => ({
-    at: new Date(r.at).toISOString(),
+    id: Number(r.id),
+    at: isoOf(r.at),
     studentId: r.student_id,
     displayName: r.display_name,
     action: r.action,

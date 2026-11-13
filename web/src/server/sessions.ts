@@ -1,4 +1,5 @@
 import type { Db } from "./db";
+import { isoOf, type RowTime } from "./db/rows";
 import { ApiError } from "./http/errors";
 
 /** 堂課 / 目前堂課 / 可借格 data access. */
@@ -175,7 +176,7 @@ export async function sessionsOfClass(db: Db, classId: number): Promise<SessionS
   const rows = await db.query<{
     id: string;
     name: string;
-    created_at: Date | string;
+    created_at: RowTime;
     is_current: boolean;
     slot_count: number | string;
   }>(
@@ -190,7 +191,7 @@ export async function sessionsOfClass(db: Db, classId: number): Promise<SessionS
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
-    createdAt: new Date(r.created_at).toISOString(),
+    createdAt: isoOf(r.created_at),
     isCurrent: r.is_current,
     slotCount: Number(r.slot_count),
   }));

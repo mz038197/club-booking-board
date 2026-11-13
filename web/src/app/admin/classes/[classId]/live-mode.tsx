@@ -128,10 +128,10 @@ function BookingList({ bookings, onCancel }: { bookings: SessionBooking[]; onCan
   if (bookings.length === 0) return <p style={{ ...ui.muted, margin: 0 }}>還沒有預約。</p>;
   const dates = [...new Set(bookings.map((b) => b.date))];
   return (
-    <div style={{ border: "1px solid #e4e4e7", borderRadius: 8, maxHeight: 520, overflow: "auto" }}>
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8, maxHeight: 520, overflow: "auto" }}>
       {dates.map((d) => (
         <div key={d}>
-          <div style={{ position: "sticky", top: 0, background: "#f4f4f5", padding: "4px 12px", fontSize: 13, fontWeight: 600 }}>
+          <div style={{ position: "sticky", top: 0, background: "var(--muted)", padding: "4px 12px", fontSize: 13, fontWeight: 600 }}>
             {shortDate(d)}
           </div>
           {bookings
@@ -145,7 +145,7 @@ function BookingList({ bookings, onCancel }: { bookings: SessionBooking[]; onCan
                   alignItems: "center",
                   gap: 8,
                   padding: "6px 12px",
-                  borderTop: "1px solid #f4f4f5",
+                  borderTop: "1px solid var(--muted)",
                   fontSize: 14,
                 }}
               >
@@ -183,7 +183,7 @@ function Roster({ roster }: { roster: RosterEntry[] }) {
         <li key={r.studentId}>
           <span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
             <span>{r.displayName}</span>
-            <span style={r.bookedCount ? { color: "#166534" } : { ...ui.muted, fontSize: 14 }}>
+            <span style={r.bookedCount ? { color: "var(--success-fg)" } : { ...ui.muted, fontSize: 14 }}>
               {r.bookedCount ? `已預約 ${r.bookedCount} 格` : "尚未預約"}
             </span>
           </span>

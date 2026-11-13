@@ -47,7 +47,7 @@ export function MonitorBoard({
       onUnauthorized={toLogin}
       controls={
         <>
-          <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "#71717a", cursor: "pointer" }}>
+          <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--muted-fg)", cursor: "pointer" }}>
             <input
               type="checkbox"
               checked={mask}
@@ -60,11 +60,11 @@ export function MonitorBoard({
             遮蔽顯示名稱（王小明 → 王○明）
           </label>
           {saveError ? (
-            <p role="alert" style={{ margin: 0, fontSize: 12, color: "#dc2626" }}>
+            <p role="alert" style={{ margin: 0, fontSize: 12, color: "var(--danger)" }}>
               設定沒有儲存，請再試一次
             </p>
           ) : null}
-          <Link href={`/admin/classes/${classId}`} style={{ fontSize: 12, color: "#71717a" }}>
+          <Link href={`/admin/classes/${classId}`} style={{ fontSize: 12, color: "var(--muted-fg)" }}>
             ← 回到教師後台
           </Link>
         </>

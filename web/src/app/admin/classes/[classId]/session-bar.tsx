@@ -126,7 +126,7 @@ function NewSessionForm({
   }
 
   return (
-    <form onSubmit={submit} style={{ display: "grid", gap: 12, borderTop: "1px solid #e4e4e7", paddingTop: 12 }}>
+    <form onSubmit={submit} style={{ display: "grid", gap: 12, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
       <p style={{ ...ui.muted, margin: 0 }}>建立後自動成為這個班級的目前堂課；學生不用知道堂課。</p>
       <label style={{ display: "grid", gap: 4 }}>
         <span style={ui.label}>名稱</span>

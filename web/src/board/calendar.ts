@@ -141,17 +141,8 @@ export function chipStatusLabel(status: ChipStatus): string {
   return slotStatusLabel(status);
 }
 
-// 教室色塊 colors (C2 prototype): white text ≥ 4.5:1 on each, none reuse success/warning/danger.
-const ROOM_PALETTE = [
-  "#1d4ed8",
-  "#6d28d9",
-  "#0f766e",
-  "#be185d",
-  "#c2410c",
-  "#0369a1",
-  "#334155",
-  "#86198f",
-];
+// 教室色塊 colors (C2 prototype): the --room-1…8 tokens in src/app/globals.css.
+const ROOM_PALETTE = Array.from({ length: 8 }, (_, i) => `var(--room-${i + 1})`);
 
 export function roomsOnBoard(slots: BoardSlot[]): string[] {
   return [...new Set(slots.map((slot) => slot.room))].sort(compareRooms);

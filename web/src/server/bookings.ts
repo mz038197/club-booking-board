@@ -1,4 +1,5 @@
 import type { Db } from "./db";
+import { isoOf, type RowTime } from "./db/rows";
 import { ApiError } from "./http/errors";
 import { limitReachedMessage } from "./booking-rules";
 import { recordFirstBooking } from "./students";
@@ -24,7 +25,7 @@ type BookingRow = {
   start_time: string;
   end_time: string;
   room: string;
-  created_at: Date | string;
+  created_at: RowTime;
 };
 
 const toBooking = (r: BookingRow): Booking => ({
@@ -34,7 +35,7 @@ const toBooking = (r: BookingRow): Booking => ({
   start: r.start_time,
   end: r.end_time,
   room: r.room,
-  booked_at: new Date(r.created_at).toISOString(),
+  booked_at: isoOf(r.created_at),
 });
 
 /**
@@ -73,9 +74,9 @@ export async function bookSlot(
       throw new ApiError(409, "LIMIT_REACHED", limitReachedMessage(limits.per_student_limit));
     }
 
-    let row: { id: string; created_at: Date | string } | undefined;
+    let row: { id: string; created_at: RowTime } | undefined;
     try {
-      [row] = await tx.query<{ id: string; created_at: Date | string }>(
+      [row] = await tx.query<{ id: string; created_at: RowTime }>(
         `INSERT INTO bookings (session_id, slot_id, student_id, created_at) VALUES ($1, $2, $3, $4)
          ON CONFLICT (session_id, slot_id) DO NOTHING
          RETURNING id, created_at`,

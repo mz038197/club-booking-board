@@ -13,8 +13,8 @@ export function AdminHeader({ access, classId }: { access: TeacherAccess; classI
         gap: 16,
         flexWrap: "wrap",
         padding: "12px 16px",
-        borderBottom: "1px solid #e4e4e7",
-        background: "#fff",
+        borderBottom: "1px solid var(--border)",
+        background: "var(--surface)",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

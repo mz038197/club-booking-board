@@ -41,8 +41,8 @@ export function PauseSwitch({ sessionId, paused }: { sessionId: string; paused: 
           gap: 16,
           padding: "16px 20px",
           borderRadius: 8,
-          border: `1px solid ${running ? "#bbf7d0" : "#fecaca"}`,
-          background: running ? "#f0fdf4" : "#fef2f2",
+          border: `1px solid ${running ? "var(--success-border)" : "var(--danger-border)"}`,
+          background: running ? "var(--success-soft)" : "var(--danger-soft)",
           cursor: busy ? "wait" : "pointer",
           textAlign: "left",
           width: "100%",
@@ -56,7 +56,7 @@ export function PauseSwitch({ sessionId, paused }: { sessionId: string; paused: 
             width: 52,
             height: 30,
             borderRadius: 999,
-            background: running ? "#16a34a" : "#d4d4d8",
+            background: running ? "var(--success)" : "var(--control-off)",
             transition: "background .15s",
           }}
         >
@@ -68,17 +68,17 @@ export function PauseSwitch({ sessionId, paused }: { sessionId: string; paused: 
               width: 24,
               height: 24,
               borderRadius: 999,
-              background: "#fff",
-              boxShadow: "0 1px 2px rgba(0,0,0,.2)",
+              background: "var(--surface)",
+              boxShadow: "var(--shadow-knob)",
               transition: "left .15s",
             }}
           />
         </span>
         <span style={{ display: "grid", gap: 2 }}>
-          <strong style={{ fontSize: 18, color: running ? "#166534" : "#991b1b" }}>
+          <strong style={{ fontSize: 18, color: running ? "var(--success-fg)" : "var(--danger-fg)" }}>
             {running ? "預約進行中" : "預約已暫停"}
           </strong>
-          <span style={{ fontSize: 13, color: "#52525b" }}>
+          <span style={{ fontSize: 13, color: "var(--subtle-fg)" }}>
             {running
               ? "跟著學生金鑰時效；按一下緊急暫停"
               : "學生預約／取消收到 BOOKING_CLOSED（查詢照常）；按一下恢復"}
@@ -86,7 +86,7 @@ export function PauseSwitch({ sessionId, paused }: { sessionId: string; paused: 
         </span>
       </button>
       {error ? (
-        <span role="alert" style={{ fontSize: 14, color: "#991b1b" }}>
+        <span role="alert" style={{ fontSize: 14, color: "var(--danger-fg)" }}>
           {error}
         </span>
       ) : null}

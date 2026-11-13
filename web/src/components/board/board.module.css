@@ -1,27 +1,15 @@
-/* Live board (teacher-board C2), shadcn style. Tokens live on .root (CSS modules allow no :root). */
+/* Live board (teacher-board C2), shadcn style. Colors are the global tokens in
+   src/app/globals.css; only layout tokens live on .root (CSS modules allow no :root). */
 .root {
-  --primary: #000;
-  --secondary: #111;
-  --success: #16a34a;
-  --success-text: #15803d;
-  --warning: #d97706;
-  --warning-text: #b45309;
-  --danger: #dc2626;
-  --surface: #fff;
-  --fg: #111827;
-  --border: #e4e4e7;
-  --muted: #f4f4f5;
-  --muted-fg: #71717a;
   --mono: ui-monospace, "Fira Code", monospace;
   --radius: 8px;
   --radius-sm: 6px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.05);
 
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 340px;
   min-height: 100vh;
   background: var(--surface);
-  color: var(--fg);
+  color: var(--text);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -50,7 +38,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
 }
 .muted {
   color: var(--muted-fg);
@@ -233,10 +221,10 @@
 }
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgb(22 163 74 / 0.5);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 50%, transparent);
   }
   70% {
-    box-shadow: 0 0 0 6px rgb(22 163 74 / 0);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--success) 0%, transparent);
   }
 }
 .toastSlot {
@@ -250,7 +238,7 @@
   border: 1px solid var(--success);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: 0 4px 12px rgb(22 163 74 / 0.15);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--success) 15%, transparent);
   font-size: 16px;
   animation: toastIn 0.35s ease-out;
 }
@@ -280,7 +268,7 @@
   background: var(--muted);
   font-size: 12px;
   font-weight: 500;
-  color: var(--fg);
+  color: var(--text);
 }
 .chip {
   display: inline-flex;
@@ -394,7 +382,7 @@
   font-weight: 600;
 }
 .rosterCount strong {
-  color: var(--fg);
+  color: var(--text);
   font-size: 24px;
   font-variant-numeric: tabular-nums;
 }
@@ -452,7 +440,7 @@
 }
 .tileCancelled {
   border: 1px solid var(--border);
-  color: var(--fg);
+  color: var(--text);
 }
 @keyframes tileOn {
   0% {
@@ -510,7 +498,7 @@
 }
 @keyframes rowFlash {
   from {
-    background: rgb(22 163 74 / 0.18);
+    background: color-mix(in srgb, var(--success) 18%, transparent);
   }
 }
 .logLine {
@@ -531,7 +519,7 @@
 }
 .toneOk {
   color: var(--success-text);
-  background: rgb(22 163 74 / 0.1);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
 }
 .toneQuiet {
   color: var(--muted-fg);
@@ -539,11 +527,11 @@
 }
 .toneWarn {
   color: var(--warning-text);
-  background: rgb(217 119 6 / 0.12);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 .toneBad {
   color: var(--danger);
-  background: rgb(220 38 38 / 0.08);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 
 @media (max-width: 1100px) {

@@ -62,7 +62,7 @@ export function studentOpenApi(apiBaseUrl: string) {
           operationId: "listSlots",
           summary: "列出目前堂課的所有可借格",
           description:
-            "回傳目前堂課的所有可借格（日期、時段、教室）與是否已被借走；已借走的格子附上借用者的顯示名稱。預約前先呼叫這個找出空的 slot_id。",
+            "回傳目前堂課的所有可借格（日期、時段、教室）與它是可借還是已借；已借的可借格附上預約者的顯示名稱。預約前先呼叫這個找出可借的 slot_id。",
           responses: {
             "200": { description: "目前堂課與它的可借格", content: json("SlotList") },
             ...commonErrors,
@@ -100,7 +100,7 @@ export function studentOpenApi(apiBaseUrl: string) {
             "400": errorResponse("INVALID_REQUEST：請求內容不是 JSON 或缺少 slot_id；INVALID_SLOT：目前堂課沒有這個可借格"),
             "401": errorRef("Unauthorized"),
             "403": errorRef("Forbidden"),
-            "409": errorResponse("SLOT_TAKEN：這格已經被別人借走；LIMIT_REACHED：已達每人可預約的上限"),
+            "409": errorResponse("SLOT_TAKEN：這個可借格已被別人預約；LIMIT_REACHED：已達每人可預約的上限"),
             "500": errorRef("InternalError"),
             "503": errorRef("RouterUnavailable"),
           },
@@ -197,8 +197,8 @@ export function studentOpenApi(apiBaseUrl: string) {
             start: { type: "string", description: "開始時間 HH:MM", example: "13:00" },
             end: { type: "string", description: "結束時間 HH:MM", example: "14:00" },
             room: { type: "string", description: "教室", example: "A101" },
-            status: { type: "string", enum: ["open", "booked"], description: "open＝可預約；booked＝已被借走" },
-            booked_by: { type: "string", description: "借用者的顯示名稱（只有 booked 時才有）" },
+            status: { type: "string", enum: ["open", "booked"], description: "open＝可借；booked＝已借" },
+            booked_by: { type: "string", description: "預約者的顯示名稱（只有 booked 時才有）" },
           },
         },
         SlotList: {
@@ -273,7 +273,7 @@ export function studentOpenApi(apiBaseUrl: string) {
               enum: [...STUDENT_ERROR_CODES],
               description:
                 "錯誤代碼：UNAUTHORIZED 金鑰無效或過期；NOT_A_STUDENT 不是學生的課堂金鑰；BOOKING_CLOSED 沒有堂課、已暫停或不在開放時間；" +
-                "ROUTER_UNAVAILABLE 暫時無法確認身分；SLOT_TAKEN 已被借走；INVALID_SLOT 沒有這個可借格；NOT_OWNER 不是自己的預約；" +
+                "ROUTER_UNAVAILABLE 暫時無法確認身分；SLOT_TAKEN 可借格已被預約；INVALID_SLOT 沒有這個可借格；NOT_OWNER 不是自己的預約；" +
                 "NOT_FOUND 找不到預約；LIMIT_REACHED 已達每人上限；INVALID_POSTER 海報資料不完整；INVALID_REQUEST 請求格式錯誤；INTERNAL_ERROR 伺服器錯誤",
             },
             message: { type: "string", description: "給學生看的中文說明，可直接轉述" },

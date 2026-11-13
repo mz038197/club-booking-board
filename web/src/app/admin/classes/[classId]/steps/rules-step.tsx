@@ -87,7 +87,7 @@ export function RulesStep({
           儲存規則
         </button>
         {message ? (
-          <span role="status" style={{ fontSize: 14, color: message.ok ? "#166534" : "#991b1b" }}>
+          <span role="status" style={{ fontSize: 14, color: message.ok ? "var(--success-fg)" : "var(--danger-fg)" }}>
             {message.text}
           </span>
         ) : null}

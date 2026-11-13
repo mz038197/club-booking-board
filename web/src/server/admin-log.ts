@@ -1,4 +1,5 @@
 import type { Db } from "./db";
+import { isoOf, type RowTime } from "./db/rows";
 import type { Teacher } from "./router-gateway";
 
 /** 教師操作紀錄: the admin actions taken on a 堂課 (per 堂課, newest first). */
@@ -40,7 +41,7 @@ export async function logAdminAction(
 /** A 堂課's 教師操作紀錄, newest first (at most `limit`). */
 export async function adminLogOf(db: Db, sessionId: string, limit = 200): Promise<AdminLogEntry[]> {
   const rows = await db.query<{
-    at: Date | string;
+    at: RowTime;
     teacher_id: number;
     teacher_name: string;
     action: string;
@@ -53,7 +54,7 @@ export async function adminLogOf(db: Db, sessionId: string, limit = 200): Promis
     [sessionId, limit],
   );
   return rows.map((r) => ({
-    at: new Date(r.at).toISOString(),
+    at: isoOf(r.at),
     teacher: { userId: r.teacher_id, displayName: r.teacher_name },
     action: r.action,
     message: r.message,

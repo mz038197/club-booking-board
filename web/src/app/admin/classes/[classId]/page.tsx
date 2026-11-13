@@ -82,7 +82,7 @@ export default async function ClassPage({
         slots: await boardOf(db, session.id),
         agentBuilder: { settings, openApi: JSON.stringify(studentOpenApi(settings.apiBaseUrl), null, 2) },
         rosterCount: (await rosterOf(db, session.id)).length,
-        shareLinkExpiresAt: (await shareLinkOf(db, session.id, now))?.expiresAt.toISOString() ?? null,
+        shareLinkExpiresAt: (await shareLinkOf(db, session.id, now))?.expiresAt ?? null,
         now,
       }
     : null;

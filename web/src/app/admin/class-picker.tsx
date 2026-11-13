@@ -8,12 +8,12 @@ export function ClassPicker({ classes, value }: { classes: ClassRef[]; value?: n
   const router = useRouter();
   return (
     <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
-      <span style={{ color: "#71717a" }}>班級</span>
+      <span style={{ color: "var(--muted-fg)" }}>班級</span>
       <select
         aria-label="班級"
         value={value ?? ""}
         onChange={(e) => router.push(`/admin/classes/${e.target.value}`)}
-        style={{ border: "1px solid #e4e4e7", borderRadius: 6, padding: "6px 8px", fontSize: 14, background: "#fff" }}
+        style={{ border: "1px solid var(--border)", borderRadius: 6, padding: "6px 8px", fontSize: 14, background: "var(--surface)" }}
       >
         {value === undefined ? (
           <option value="" disabled>

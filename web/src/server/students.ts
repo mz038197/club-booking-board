@@ -1,4 +1,5 @@
 import type { Db } from "./db";
+import { isoOf, type RowTime } from "./db/rows";
 import type { Student } from "./router-gateway";
 
 /** 學生 (router student id → latest 顯示名稱) and 堂課學生 (名冊) data access. */
@@ -12,6 +13,8 @@ export type RosterEntry = {
   firstBookedAt: string | null;
   /** 可借格 the student holds in the 堂課 now */
   bookedCount: number;
+  /** 教室 of those 可借格, in booking order */
+  rooms: string[];
 };
 
 /** Records the 學生 and their latest 顯示名稱 (on every passing Key Check). */
@@ -59,23 +62,29 @@ export async function rosterOf(db: Db, sessionId: string): Promise<RosterEntry[]
   const rows = await db.query<{
     student_id: number;
     display_name: string;
-    first_call_at: Date | string;
-    first_booked_at: Date | string | null;
-    booked_count: number | string;
+    first_call_at: RowTime;
+    first_booked_at: RowTime | null;
+    rooms: string[] | null;
   }>(
     `SELECT ss.student_id, s.display_name, ss.first_call_at, ss.first_booked_at,
-            (SELECT count(*) FROM bookings b
-              WHERE b.session_id = ss.session_id AND b.student_id = ss.student_id) AS booked_count
+            (SELECT array_agg(sl.room ORDER BY b.created_at, b.slot_id)
+               FROM bookings b
+               JOIN slots sl ON sl.session_id = b.session_id AND sl.slot_id = b.slot_id
+              WHERE b.session_id = ss.session_id AND b.student_id = ss.student_id) AS rooms
        FROM session_students ss JOIN students s ON s.student_id = ss.student_id
       WHERE ss.session_id = $1
       ORDER BY ss.first_call_at, ss.student_id`,
     [sessionId],
   );
-  return rows.map((r) => ({
-    studentId: r.student_id,
-    displayName: r.display_name,
-    firstCallAt: new Date(r.first_call_at).toISOString(),
-    firstBookedAt: r.first_booked_at ? new Date(r.first_booked_at).toISOString() : null,
-    bookedCount: Number(r.booked_count),
-  }));
+  return rows.map((r) => {
+    const rooms = r.rooms ?? [];
+    return {
+      studentId: r.student_id,
+      displayName: r.display_name,
+      firstCallAt: isoOf(r.first_call_at),
+      firstBookedAt: isoOf(r.first_booked_at),
+      bookedCount: rooms.length,
+      rooms,
+    };
+  });
 }

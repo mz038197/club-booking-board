@@ -25,7 +25,14 @@ export function classTimeOfDay(now: Date): string {
 
 const windowText = (w: BookingWindow) => `上課當天 ${w.start}–${w.end}`;
 
-/** 403 BOOKING_CLOSED when the 堂課 is 暫停 or `now` is outside its 時間窗. */
+/**
+ * 403 BOOKING_CLOSED when the 堂課 is 暫停 or `now` is outside its 時間窗.
+ *
+ * The 時間窗 is a time of day only (HH:MM–HH:MM, every day): it carries no date.
+ * Which day(s) a student can book at all is bounded by their 課堂金鑰's validity
+ * (the router refuses expired / not-yet-started keys before we get here), so the
+ * window just narrows the hours within that day.
+ */
 export function assertBookingOpen(session: Session, now: Date): void {
   if (session.paused) throw new ApiError(403, "BOOKING_CLOSED", PAUSED_NOTICE);
   const w = session.bookingWindow;

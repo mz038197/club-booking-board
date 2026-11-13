@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
+import { loginErrorParam, loginRequiredParam } from "@/auth/login-paths";
 import { Landing } from "@/components/landing/Landing";
 import { getDeps } from "@/server/deps";
 import { readTeacherSession, TEACHER_COOKIE } from "@/server/http/teacher-auth";
-import { loginErrorParam } from "@/app/login-paths";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ export default async function Home({
     <Landing
       teacherName={teacher?.displayName ?? null}
       error={loginErrorParam(params.error)}
-      loginRequired={params.notice === "login_required"}
+      loginRequired={loginRequiredParam(params.notice)}
     />
   );
 }

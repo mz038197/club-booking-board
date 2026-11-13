@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getDeps } from "./deps";
 import { ApiError } from "./http/errors";
 import { TEACHER_COOKIE, teacherAccess, type TeacherAccess } from "./http/teacher-auth";
-import { LOGIN_REQUIRED_PATH, loginErrorPath } from "@/app/login-paths";
+import { LOGIN_REQUIRED_PATH, loginErrorPath } from "@/auth/login-paths";
 
 /**
  * For teacher pages (server components): the signed-in teacher's access, or a

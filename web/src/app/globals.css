@@ -48,6 +48,7 @@
 
   /* 首頁 (landing) dark band: top bar and hero */
   --hero-bg: #09090b;
+  --hero-bar: rgb(9 9 11 / 0.92); /* sticky top bar, over a backdrop blur */
   --hero-fg: #fafafa;
   --hero-muted: #a1a1aa;
   --hero-border: #3f3f46;

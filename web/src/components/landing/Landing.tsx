@@ -1,5 +1,5 @@
 import { LOGIN_REQUIRED_NOTICE } from "@/server/http/teacher-auth";
-import type { LoginError } from "@/app/login-paths";
+import { ADMIN_PATH, LOGIN_START_PATH, type LoginError } from "@/auth/login-paths";
 import s from "./landing.module.css";
 
 /**
@@ -14,9 +14,6 @@ export type LandingProps = {
   /** A teacher page was opened while signed out. */
   loginRequired: boolean;
 };
-
-const LOGIN_HREF = "/auth/login";
-const ADMIN_HREF = "/admin";
 
 const ERRORS: Record<LoginError, string> = {
   login_failed: "登入失敗，請再試一次。只有教師或管理員帳號可以登入後台。",
@@ -42,20 +39,21 @@ export function Landing({ teacherName, error, loginRequired }: LandingProps) {
             {teacherName ? (
               <>
                 <span className={s.cornerName}>{teacherName}</span>
-                <a href={ADMIN_HREF} className={s.btnLight}>進入後台</a>
+                <a href={ADMIN_PATH} className={s.btnLight}>進入後台</a>
               </>
             ) : (
-              <a href={LOGIN_HREF} className={s.btnLight}>登入</a>
+              <a href={LOGIN_START_PATH} className={s.btnLight}>登入</a>
             )}
           </div>
         </div>
       </header>
 
-      <Banner error={error} loginRequired={loginRequired && !teacherName} />
+      {/* Already signed in (e.g. from another tab): no 「請先登入」. */}
+      <Banner error={error} showLoginRequired={loginRequired && !teacherName} />
 
       <section className={s.hero}>
         <div className={s.wrap}>
-          <p className={s.eyebrow}>Agent 課程實作</p>
+          <p className={s.eyebrow}>台南一中 · Agent 實作</p>
           <h1 className={s.title}>
             讓你的 Agent
             <br />
@@ -64,9 +62,9 @@ export function Landing({ teacherName, error, loginRequired }: LandingProps) {
           <p className={s.lede}>學生用課堂金鑰呼叫 API 或 MCP 預約可借格，結果即時出現在投影看板上。</p>
           <div className={s.actions}>
             {teacherName ? (
-              <a href={ADMIN_HREF} className={`${s.btnLight} ${s.btnLarge}`}>進入後台 →</a>
+              <a href={ADMIN_PATH} className={`${s.btnLight} ${s.btnLarge}`}>進入後台 →</a>
             ) : (
-              <a href={LOGIN_HREF} className={`${s.btnLight} ${s.btnLarge}`}>用 VansCoding 帳號登入</a>
+              <a href={LOGIN_START_PATH} className={`${s.btnLight} ${s.btnLarge}`}>用 VansCoding 帳號登入</a>
             )}
             <a href="#how" className={`${s.btnGhost} ${s.btnLarge}`}>學生怎麼開始</a>
           </div>
@@ -99,18 +97,18 @@ export function Landing({ teacherName, error, loginRequired }: LandingProps) {
   );
 }
 
-function Banner({ error, loginRequired }: { error: LoginError | null; loginRequired: boolean }) {
+function Banner({ error, showLoginRequired }: { error: LoginError | null; showLoginRequired: boolean }) {
   if (error) {
     return (
       <div role="alert" className={`${s.banner} ${s.bannerError}`}>
-        {ERRORS[error]} <a href={LOGIN_HREF}>重新登入 →</a>
+        {ERRORS[error]} <a href={LOGIN_START_PATH}>重新登入 →</a>
       </div>
     );
   }
-  if (loginRequired) {
+  if (showLoginRequired) {
     return (
       <div role="status" className={s.banner}>
-        {LOGIN_REQUIRED_NOTICE}。 <a href={LOGIN_HREF}>登入 →</a>
+        {LOGIN_REQUIRED_NOTICE}。 <a href={LOGIN_START_PATH}>登入 →</a>
       </div>
     );
   }
@@ -123,14 +121,14 @@ const STEPS = [
   { title: "看板即時顯示", body: "預約成功就出現在投影看板上；教師在後台監看、暫停、調整規則。" },
 ];
 
-// 示範資料: 時段 × 教室, null = 可借, otherwise who booked it.
-const DEMO_ROOMS = ["社辦 A", "社辦 B", "音樂教室", "美術教室"];
+// 示範資料: 時段 × 教室 (編號), null = 可借, otherwise the booking 學生's 顯示名稱.
+const DEMO_ROOMS = ["201", "202", "301", "302"];
 const DEMO_ROWS: { time: string; cells: (string | null)[] }[] = [
   { time: "12:10", cells: ["王小明", null, null, "陳同學"] },
   { time: "12:40", cells: [null, "林同學", null, null] },
-  { time: "16:10", cells: [null, null, "吹奏社", null] },
+  { time: "16:10", cells: [null, null, "黃同學", null] },
   { time: "16:40", cells: ["張同學", null, null, null] },
-  { time: "17:10", cells: [null, null, null, "熱舞社"] },
+  { time: "17:10", cells: [null, null, null, "李同學"] },
 ];
 
 function DemoBoard() {

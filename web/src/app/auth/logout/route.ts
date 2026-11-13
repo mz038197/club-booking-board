@@ -1,6 +1,6 @@
 import { handle } from "@/server/http/errors";
 import { clearedTeacherSessionCookie } from "@/server/http/teacher-auth";
-import { HOME_PATH } from "@/app/login-paths";
+import { HOME_PATH } from "@/auth/login-paths";
 
 export const dynamic = "force-dynamic";
 

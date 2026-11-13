@@ -16,7 +16,8 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--hero-bg);
+  background: var(--hero-bar);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--hero-border);
   color: var(--hero-fg);
 }

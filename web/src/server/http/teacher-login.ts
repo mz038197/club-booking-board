@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { HOME_PATH, type LoginError } from "@/app/login-paths";
+import { ADMIN_PATH, HOME_PATH, type LoginError } from "@/auth/login-paths";
 import type { Deps } from "../deps";
 import {
   cookieLine,
@@ -14,7 +14,6 @@ export const LOGIN_COOKIE = "cbb_teacher_login";
 const LOGIN_COOKIE_PATH = "/auth";
 const LOGIN_SECONDS = 10 * 60;
 export const CALLBACK_PATH = "/auth/callback";
-export const ADMIN_PATH = "/admin";
 
 function redirect(to: URL, cookies: string[] = [], status = 302): Response {
   const headers = new Headers({ location: to.toString() });

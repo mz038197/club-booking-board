@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LiveBoard } from "@/components/board/LiveBoard";
-import { LOGIN_REQUIRED_PATH } from "@/app/login-paths";
+import { LOGIN_REQUIRED_PATH } from "@/auth/login-paths";
 
 /** The 投影監看頁: the live board on the monitor endpoint, plus the teacher-only 投影顯示設定. */
 export function MonitorBoard({

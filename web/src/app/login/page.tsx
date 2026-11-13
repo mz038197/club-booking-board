@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { HOME_PATH, loginErrorParam, loginErrorPath } from "@/app/login-paths";
+import { HOME_PATH, loginErrorParam, loginErrorPath } from "@/auth/login-paths";
 
 export const dynamic = "force-dynamic";
 

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { ADMIN_PATH, HOME_PATH, type LoginError } from "@/auth/login-paths";
 import type { Deps } from "../deps";
 import {
   cookieLine,
@@ -13,11 +14,6 @@ export const LOGIN_COOKIE = "cbb_teacher_login";
 const LOGIN_COOKIE_PATH = "/auth";
 const LOGIN_SECONDS = 10 * 60;
 export const CALLBACK_PATH = "/auth/callback";
-export const ADMIN_PATH = "/admin";
-export const LOGIN_PAGE_PATH = "/login";
-
-/** `?error=` values the login page explains. */
-export type LoginError = "login_failed" | "router_unavailable";
 
 function redirect(to: URL, cookies: string[] = [], status = 302): Response {
   const headers = new Headers({ location: to.toString() });
@@ -52,7 +48,7 @@ export function startTeacherLogin(req: Request, deps: Deps): Response {
 export async function finishTeacherLogin(req: Request, deps: Deps): Promise<Response> {
   const url = new URL(req.url);
   const fail = (error: LoginError) => {
-    const to = new URL(LOGIN_PAGE_PATH, req.url);
+    const to = new URL(HOME_PATH, req.url);
     to.searchParams.set("error", error);
     return redirect(to, [clearLoginCookie()]);
   };

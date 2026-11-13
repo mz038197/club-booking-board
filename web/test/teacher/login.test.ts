@@ -117,11 +117,11 @@ describe("teacher login through the router", () => {
 });
 
 describe("teacher logout", () => {
-  it("clears the session cookie and returns to the login page", async () => {
+  it("clears the session cookie and returns to the 首頁", async () => {
     const res = await app.request("POST", "/auth/logout");
 
     expect(res.status).toBe(303);
-    expect(new URL(res.headers.get("location")!).pathname).toBe("/login");
+    expect(new URL(res.headers.get("location")!).pathname).toBe("/");
     const cleared = setCookies(res).cbb_teacher;
     expect(cleared.value).toBe("");
     expect(cleared.line).toMatch(/Max-Age=0/i);
@@ -131,7 +131,7 @@ describe("teacher logout", () => {
 function expectLoginFailed(res: Response) {
   expect(res.status).toBe(302);
   const location = new URL(res.headers.get("location")!);
-  expect(location.pathname).toBe("/login");
+  expect(location.pathname).toBe("/");
   expect(location.searchParams.get("error")).toBeTruthy();
   expect(setCookies(res).cbb_teacher?.value ?? "").toBe("");
 }

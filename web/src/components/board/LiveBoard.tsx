@@ -36,7 +36,7 @@ export type LiveBoardProps = {
   onFollowChange?: (follow: boolean) => void;
   /** Extra left-column content (teacher-only switches and links). */
   controls?: ReactNode;
-  /** Called when the source answers 401 (the monitor sends the teacher to /login). */
+  /** Called when the source answers 401 (the monitor sends the teacher to the 首頁). */
   onUnauthorized?: () => void;
   /** Called (and polling stops) when the source answers 404 (the 分享連結 expired or was closed). */
   onNotFound?: () => void;

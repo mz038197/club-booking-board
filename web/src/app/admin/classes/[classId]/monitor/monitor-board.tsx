@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LiveBoard } from "@/components/board/LiveBoard";
+import { LOGIN_REQUIRED_PATH } from "@/auth/login-paths";
 
 /** The 投影監看頁: the live board on the monitor endpoint, plus the teacher-only 投影顯示設定. */
 export function MonitorBoard({
@@ -18,7 +19,7 @@ export function MonitorBoard({
   initialFollow: boolean;
 }) {
   const router = useRouter();
-  const toLogin = () => router.push("/login");
+  const toLogin = () => router.push(LOGIN_REQUIRED_PATH);
   const [mask, setMask] = useState(initialMask);
   const [saveError, setSaveError] = useState(false);
   const settingsUrl = `/api/teacher/sessions/${sessionId}/display-settings`;

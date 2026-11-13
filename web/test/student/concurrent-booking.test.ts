@@ -4,7 +4,7 @@ import { createFakeGateway } from "@/server/router-gateway/fake";
 import { addSlots, createSession } from "@/server/sessions";
 import { setupTestApp, type TestApp } from "../helpers/app";
 
-// Port of v1 backend/tests/test_concurrent_booking.py.
+// Port of the v1 FastAPI test test_concurrent_booking.py (v1 removed; see git history).
 
 const N = 20;
 const SLOT_ID = "2026-09-25_13:00-15:00_301";

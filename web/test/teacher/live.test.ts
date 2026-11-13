@@ -40,8 +40,11 @@ beforeEach(async () => {
     ...as(),
     body: { dates: ["2026-12-09"], times: [{ start: "14:00", end: "15:00" }], rooms: ["B201"] },
   });
-  // Setup only (students here book more than one 可借格): #19 owns the 預約規則 endpoint.
-  await app.db.query(`UPDATE sessions SET per_student_limit = 3 WHERE id = $1`, [sessionId]);
+  // Students here book more than one 可借格.
+  await app.request("PUT", `/api/teacher/sessions/${sessionId}/rules`, {
+    ...as(),
+    body: { per_student_limit: 3, booking_window: null },
+  });
 });
 afterEach(async () => {
   await app.close();
@@ -223,6 +226,7 @@ describe("GET /api/teacher/sessions/:id/admin-log — 教師操作紀錄", () =>
       "makeCurrent",
       "replaceSlots",
       "removeSlot",
+      "setRules",
       "generateSlots",
       "generateSlots",
       "createSession",
@@ -241,6 +245,21 @@ describe("GET /api/teacher/sessions/:id/admin-log — 教師操作紀錄", () =>
     });
   });
 
+  it("records 暫停／恢復 and 預約規則 changes", async () => {
+    const put = (path: string, body: unknown) =>
+      app.request("PUT", `/api/teacher/sessions/${sessionId}${path}`, { ...as(), body });
+    await put("/rules", { per_student_limit: 2, booking_window: { start: "12:00", end: "13:30" } });
+    await put("/pause", { paused: true });
+    await put("/pause", { paused: false });
+
+    const messages = (await get("/admin-log")).entries.slice(0, 3).map((e: { message: string }) => e.message);
+    expect(messages).toEqual([
+      "已恢復預約",
+      "已暫停預約：學生 Agent 預約／取消會收到 403 BOOKING_CLOSED，查詢照常",
+      "規則：每人最多 2 格，12:00–13:30 可預約",
+    ]);
+  });
+
   it("does not record previews or refused actions", async () => {
     await book(FAKE_KEYS.studentA, A101);
     await app.request("POST", `/api/teacher/sessions/${sessionId}/slots/generate`, {
@@ -254,7 +273,7 @@ describe("GET /api/teacher/sessions/:id/admin-log — 教師操作紀錄", () =>
     );
     expect(refused.status).toBe(409);
 
-    expect(await actions()).toEqual(["generateSlots", "generateSlots", "createSession"]);
+    expect(await actions()).toEqual(["setRules", "generateSlots", "generateSlots", "createSession"]);
   });
 
   it("keeps each 堂課's log separate", async () => {
@@ -265,7 +284,7 @@ describe("GET /api/teacher/sessions/:id/admin-log — 教師操作紀錄", () =>
     const next = (await res.json()).session.id;
 
     expect(await actions(next)).toEqual(["createSession"]);
-    expect(await actions()).toEqual(["generateSlots", "generateSlots", "createSession"]);
+    expect(await actions()).toEqual(["setRules", "generateSlots", "generateSlots", "createSession"]);
   });
 });
 
@@ -319,6 +338,16 @@ describe("POST /api/teacher/sessions/:id/reset — 重置堂課", () => {
       at: "2026-12-09T05:10:00.000Z",
       action: "resetSession",
     });
+  });
+
+  it("keeps 暫停 and the 預約規則", async () => {
+    const rules = { per_student_limit: 2, booking_window: { start: "12:00", end: "13:30" } };
+    await app.request("PUT", `/api/teacher/sessions/${sessionId}/rules`, { ...as(), body: rules });
+    await app.request("PUT", `/api/teacher/sessions/${sessionId}/pause`, { ...as(), body: { paused: true } });
+
+    await app.request("POST", `/api/teacher/sessions/${sessionId}/reset`, as());
+
+    expect((await get("")).session).toMatchObject({ paused: true, ...rules });
   });
 
   it("starts recording again after a reset (a rehearsal, then the real class)", async () => {

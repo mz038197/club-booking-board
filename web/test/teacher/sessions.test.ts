@@ -47,18 +47,21 @@ describe("建立堂課並複製舊堂課", () => {
   it("copies the 可借清單 and 預約規則, but not the 預約", async () => {
     const old = await createSession("12/09 社團教室");
     await generate(old.id, ["A101", "A102"]);
-    // 每人上限 has no endpoint until #19; set it directly as setup.
-    await app.db.query(`UPDATE sessions SET per_student_limit = 3 WHERE id = $1`, [old.id]);
     const booked = await app.request("POST", "/api/v1/bookings", {
       key: FAKE_KEYS.studentA,
       body: { slot_id: "2026-12-09_12:10-13:00_A101" },
     });
     expect(booked.status).toBe(201);
+    const rules = { per_student_limit: 3, booking_window: { start: "12:30", end: "15:10" } };
+    const ruled = await app.request("PUT", `/api/teacher/sessions/${old.id}/rules`, { ...asTeacher(), body: rules });
+    expect(ruled.status).toBe(200);
+    // 暫停 is an in-class switch, not a rule: never copied.
+    await app.request("PUT", `/api/teacher/sessions/${old.id}/pause`, { ...asTeacher(), body: { paused: true } });
 
     const copy = await createSession("12/16 社團教室", { copy_from: old.id });
 
     const detail = await sessionDetail(copy.id);
-    expect(detail.session).toMatchObject({ name: "12/16 社團教室", is_current: true, per_student_limit: 3 });
+    expect(detail.session).toMatchObject({ name: "12/16 社團教室", is_current: true, paused: false, ...rules });
     expect(detail.slots).toEqual([
       expect.objectContaining({ slot_id: "2026-12-09_12:10-13:00_A101", status: "open" }),
       expect.objectContaining({ slot_id: "2026-12-09_12:10-13:00_A102", status: "open" }),

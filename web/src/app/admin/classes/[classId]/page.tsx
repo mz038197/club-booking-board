@@ -14,6 +14,7 @@ import { requireTeacherPage } from "@/server/teacher-page";
 import { ui } from "@/app/ui";
 import { AdminHeader } from "../../admin-header";
 import { LiveMode, type LiveData } from "./live-mode";
+import { PauseSwitch } from "./pause-switch";
 import { prepSteps, type SessionContext } from "./prep-steps";
 import { SessionBar } from "./session-bar";
 import { Workspace } from "./workspace";
@@ -97,6 +98,7 @@ export default async function ClassPage({
             live={
               <LiveMode
                 data={await liveData(db, ctx.session.id)}
+                pauseSwitch={<PauseSwitch sessionId={ctx.session.id} paused={ctx.session.paused} />}
                 monitorLink={
                   <a
                     href={`/admin/classes/${cls.id}/monitor?session=${ctx.session.id}`}

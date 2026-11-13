@@ -5,7 +5,7 @@ import { Validator } from "@seriousme/openapi-schema-validator";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiCallsOf } from "@/server/call-log";
 import { FAKE_KEYS } from "@/server/router-gateway/fake";
-import { addSlots, createSession } from "@/server/sessions";
+import { addSlots, createSession, setBookingRules } from "@/server/sessions";
 import { setupTestApp, type TestApp } from "../helpers/app";
 
 type Json = Record<string, unknown>;
@@ -123,6 +123,8 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
   it("names each operation the way the API 呼叫紀錄 does (operationId = 動作), using its own examples", async () => {
     const doc = await fetchDoc();
     const session = await createSession(app.db, { classId: 56, name: "12/09" });
+    // studentA books twice (setup + bookSlot's example), so allow 2 per student.
+    await setBookingRules(app.db, session.id, { perStudentLimit: 2, bookingWindow: null });
     await addSlots(app.db, session.id, [
       { date: "2026-12-09", start: "13:00", end: "14:00", room: "A101" },
       { date: "2026-12-09", start: "13:00", end: "14:00", room: "A102" },

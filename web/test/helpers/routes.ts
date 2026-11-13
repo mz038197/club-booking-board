@@ -28,6 +28,8 @@ export const ROUTES: Record<string, () => Promise<RouteModule>> = {
   "/api/teacher/sessions/:id/admin-log": () => import("@/app/api/teacher/sessions/[id]/admin-log/route"),
   "/api/teacher/sessions/:id/api-calls": () => import("@/app/api/teacher/sessions/[id]/api-calls/route"),
   "/api/teacher/sessions/:id/reset": () => import("@/app/api/teacher/sessions/[id]/reset/route"),
+  "/api/teacher/sessions/:id/rules": () => import("@/app/api/teacher/sessions/[id]/rules/route"),
+  "/api/teacher/sessions/:id/pause": () => import("@/app/api/teacher/sessions/[id]/pause/route"),
   "/api/teacher/sessions/:id/slots": () => import("@/app/api/teacher/sessions/[id]/slots/route"),
   "/api/teacher/sessions/:id/slots/generate": () => import("@/app/api/teacher/sessions/[id]/slots/generate/route"),
   "/api/teacher/sessions/:id/slots/:slotId": () => import("@/app/api/teacher/sessions/[id]/slots/[slotId]/route"),

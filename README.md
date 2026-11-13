@@ -66,6 +66,15 @@ Owner identity for cancel is query param `student_id`.
 
 Validation: unknown / malformed slot → `INVALID_SLOT`; poster body → `INVALID_POSTER`; other request shape → `INVALID_REQUEST`. Race / booking codes (`SLOT_TAKEN`, `CONFLICT`, `NOT_OWNER`, `NOT_FOUND`) are unchanged.
 
+## Deploy (v2, `web/`)
+
+The Vercel project `club-booking-board` (team vans-coding) is connected to this repo with Root Directory `web`:
+
+- Push or merge to `main` → production, https://club-booking-board.vercel.app (real router).
+- Any other branch or PR → a preview URL behind Vercel Authentication, using the fake router (`ROUTER_GATEWAY=fake`). Preview currently shares production's database, so anything you do there as a fake teacher writes real data.
+
+Run migrations against the database yourself before merging a change that adds one (`cd web && npm run db:migrate` with `DATABASE_URL` set). Environment variables live in Vercel; see `web/.env.example`.
+
 ## Agent skills
 
 This repo installs [Matt Pocock's engineering skills](https://github.com/mattpocock/skills) for Cursor under `.agents/skills`, locked in `skills-lock.json`.

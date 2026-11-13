@@ -2,7 +2,7 @@
 
 社團教室出借看板：學生打造會借教室的 Agent，以課堂金鑰呼叫 API 或 MCP 預約可借格；教師在後台開堂課、監看投影看板。用語見 [`CONTEXT.md`](CONTEXT.md)，決策見 [`docs/adr/`](docs/adr/)，v2 規格見 issue #14（原始產品規格：[`docs/specs/club-classroom-booking-v1.md`](docs/specs/club-classroom-booking-v1.md)）。
 
-正式站：https://club-booking-board.vercel.app
+正式站：https://club.vanscoding.com
 
 ## 版面
 
@@ -56,7 +56,7 @@ Agent 呼叫 `/api/v1`（`Authorization: Bearer <課堂金鑰>`）：
 
 The Vercel project `club-booking-board` (team vans-coding) is connected to this repo with Root Directory `web`:
 
-- Push or merge to `main` → production, https://club-booking-board.vercel.app (real router).
+- Push or merge to `main` → production, https://club.vanscoding.com (real router; https://club-booking-board.vercel.app still works).
 - Any other branch or PR → a preview URL behind Vercel Authentication, using the fake router (`ROUTER_GATEWAY=fake`). Preview currently shares production's database, so anything you do there as a fake teacher writes real data.
 
 Run migrations against the database yourself before merging a change that adds one (`cd web && npm run db:migrate` with `DATABASE_URL` set). Environment variables live in Vercel; see `web/.env.example`.

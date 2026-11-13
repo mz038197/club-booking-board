@@ -15,6 +15,10 @@ export const ROUTES: Record<string, () => Promise<RouteModule>> = {
   "/auth/logout": () => import("@/app/auth/logout/route"),
   "/api/teacher/me": () => import("@/app/api/teacher/me/route"),
   "/api/teacher/classes/:classId": () => import("@/app/api/teacher/classes/[classId]/route"),
+  "/api/teacher/sessions/:sessionId/monitor": () =>
+    import("@/app/api/teacher/sessions/[sessionId]/monitor/route"),
+  "/api/teacher/sessions/:sessionId/display-settings": () =>
+    import("@/app/api/teacher/sessions/[sessionId]/display-settings/route"),
 };
 
 export async function resolveRoute(

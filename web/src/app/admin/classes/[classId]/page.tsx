@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { managedClass } from "@/server/http/teacher-auth";
 import { requireTeacherPage } from "@/server/teacher-page";
@@ -20,7 +21,10 @@ export default async function ClassPage({ params }: { params: Promise<{ classId:
             <>
               <h1 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 4px" }}>{cls.name}</h1>
               {/* 堂課 list and the prep wizard / live mode arrive with #18–#22. */}
-              <p style={{ ...ui.muted, margin: 0 }}>堂課管理即將上線。</p>
+              <p style={{ ...ui.muted, margin: "0 0 12px" }}>堂課管理即將上線。</p>
+              <Link href={`/admin/classes/${cls.id}/monitor`} style={ui.buttonOutline}>
+                開啟投影監看
+              </Link>
             </>
           ) : (
             <h1 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>你沒有管理這個班級的權限</h1>

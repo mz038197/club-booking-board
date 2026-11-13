@@ -8,6 +8,8 @@ type RouteModule = Record<string, unknown>;
 
 export const ROUTES: Record<string, () => Promise<RouteModule>> = {
   "/api/v1/slots": () => import("@/app/api/v1/slots/route"),
+  "/api/v1/bookings": () => import("@/app/api/v1/bookings/route"),
+  "/api/v1/bookings/:id": () => import("@/app/api/v1/bookings/[id]/route"),
 };
 
 export async function resolveRoute(

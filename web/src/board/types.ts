@@ -14,7 +14,7 @@ export type BoardPoster = { title: string; body: string };
 
 /**
  * One 可借格 of a 看板, as the API sends it; `booked_by` = 顯示名稱 (maybe masked);
- * `poster` only on teacher views, for a 預約 with a 海報.
+ * `poster` only on the teacher monitor and the 分享連結, for a 預約 with a 海報.
  */
 export type BoardSlot = SlotSpec & {
   slot_id: string;

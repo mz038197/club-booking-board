@@ -213,7 +213,7 @@ export async function currentSessionOf(db: Db, classId: number): Promise<Session
  * 看板: every 可借格 of a 堂課 with its booking state and the booker's 顯示名稱.
  * A 教師保留 is 已借 with the 保留 name as the booker (ADR 0006); only with
  * `teacherView` is it marked `held: true`, so students and agents never see a third state.
- * `withPosters` adds each 預約's 海報 (teacher views; the student's listSlots never carries them).
+ * `withPosters` adds each 預約's 海報 (teacher monitor and 分享連結; the student's listSlots never carries them).
  */
 export async function boardOf(
   db: Db,

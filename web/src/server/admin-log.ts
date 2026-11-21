@@ -13,6 +13,7 @@ export type AdminAction =
   | "replaceSlots"
   | "setHold"
   | "releaseHold"
+  | "deletePoster"
   | "forceCancel"
   | "resetSession"
   | "displaySettings"

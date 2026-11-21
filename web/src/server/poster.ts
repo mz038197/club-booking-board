@@ -115,3 +115,23 @@ export async function writePoster(
     };
   });
 }
+
+/**
+ * 老師刪除海報: removes the 海報 of the 預約 on a 可借格; the 預約 itself stays.
+ * Returns who had posted it and its 活動名稱, for the 教師操作紀錄.
+ * Throws 404 NOT_FOUND when the 可借格 has no 海報.
+ */
+export async function deletePosterOfSlot(
+  db: Db,
+  input: { sessionId: string; slotId: string },
+): Promise<{ displayName: string; title: string }> {
+  const [removed] = await db.query<{ title: string; display_name: string | null }>(
+    `DELETE FROM posters p
+      USING bookings b LEFT JOIN students st ON st.student_id = b.student_id
+      WHERE p.booking_id = b.id AND b.session_id = $1 AND b.slot_id = $2
+      RETURNING p.title, st.display_name`,
+    [input.sessionId, input.slotId],
+  );
+  if (!removed) throw new ApiError(404, "NOT_FOUND", "這個可借格沒有海報");
+  return { displayName: removed.display_name ?? "", title: removed.title };
+}

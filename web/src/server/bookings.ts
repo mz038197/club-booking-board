@@ -3,7 +3,9 @@ import type { Db } from "./db";
 import { isoOf, type RowTime } from "./db/rows";
 import { ApiError } from "./http/errors";
 import { limitReachedMessage } from "./booking-rules";
+import { posterOf, type PosterCols } from "./poster";
 import { recordFirstBooking } from "./students";
+import { isUuid } from "./uuid";
 
 const FOREIGN_KEY_VIOLATION = "23503";
 
@@ -108,8 +110,6 @@ export async function bookSlot(
   });
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
  * Cancels a student's own 預約 in a 堂課; returns its slot_id.
  * Throws 404 NOT_FOUND (no such 預約 in this 堂課) / 403 NOT_OWNER.
@@ -125,7 +125,7 @@ export async function cancelBooking(
   },
 ): Promise<string> {
   const notFound = new ApiError(404, "NOT_FOUND", "找不到這筆預約");
-  if (!UUID.test(input.bookingId)) throw notFound;
+  if (!isUuid(input.bookingId)) throw notFound;
   return db.transaction(async (tx) => {
     const [row] = await tx.query<{ slot_id: string; student_id: number }>(
       `SELECT slot_id, student_id FROM bookings WHERE id = $1 AND session_id = $2 FOR UPDATE`,
@@ -167,7 +167,7 @@ export async function forceCancelBooking(
   db: Db,
   input: { sessionId: string; bookingId: string },
 ): Promise<{ slotId: string; studentId: number; displayName: string }> {
-  if (!UUID.test(input.bookingId)) throw new ApiError(404, "NOT_FOUND", "找不到這筆預約");
+  if (!isUuid(input.bookingId)) throw new ApiError(404, "NOT_FOUND", "找不到這筆預約");
   const [row] = await db.query<{ slot_id: string; student_id: number; display_name: string }>(
     `DELETE FROM bookings b USING students st
       WHERE b.id = $1 AND b.session_id = $2 AND st.student_id = b.student_id
@@ -183,7 +183,7 @@ export type MyBooking = Booking & { poster: BoardPoster | null };
 
 /** 我的預約: a student's 預約 in a 堂課, in board order, each with its 海報. */
 export async function bookingsOf(db: Db, sessionId: string, studentId: number): Promise<MyBooking[]> {
-  const rows = await db.query<BookingRow & { poster_title: string | null; poster_body: string | null }>(
+  const rows = await db.query<BookingRow & PosterCols>(
     `SELECT b.id, b.slot_id, s.date, s.start_time, s.end_time, s.room, b.created_at,
             p.title AS poster_title, p.body AS poster_body
        FROM bookings b
@@ -193,8 +193,5 @@ export async function bookingsOf(db: Db, sessionId: string, studentId: number): 
       ORDER BY s.date, s.start_time, s.room`,
     [sessionId, studentId],
   );
-  return rows.map((r) => ({
-    ...toBooking(r),
-    poster: r.poster_title === null ? null : { title: r.poster_title, body: r.poster_body ?? "" },
-  }));
+  return rows.map((r) => ({ ...toBooking(r), poster: posterOf(r) }));
 }

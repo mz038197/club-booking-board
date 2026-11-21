@@ -3,7 +3,7 @@ import { deletePosterOfSlot } from "@/server/poster";
 
 export const dynamic = "force-dynamic";
 
-/** 老師刪除海報（日展開）→ 204，預約不受影響；這一格沒有海報 → 404 NOT_FOUND. */
+/** 教師刪除海報（日展開）→ 204，預約不受影響；這一格沒有海報 → 404 NOT_FOUND. */
 export const DELETE = sessionRoute<{ id: string; slotId: string }>(async (args) => {
   const { deps, session, params } = args;
   const removed = await deletePosterOfSlot(deps.db, { sessionId: session.id, slotId: params.slotId });

@@ -145,7 +145,8 @@ export function studentOpenApi(apiBaseUrl: string) {
             "海報的日期、時段、教室由後端從這筆預約帶入，不必也不能自己填。一筆預約只有一張海報，再貼一次會取代舊的；" +
             "取消預約時海報一起消失。只能貼到自己的預約。堂課暫停時無法貼海報（403 BOOKING_CLOSED）。成功時回傳看板實際存下的海報。" +
             `海報合格規則：活動名稱與內文去除前後空白後都不能是空的；內文 ${POSTER_BODY_MIN}–${POSTER_BODY_MAX} 字` +
-            "（去除前後空白後計算，中文字、英文字母、空白、標點、emoji 都各算 1 字）；" +
+            "（去除前後空白後，以 Unicode 字元計算：中文字、英文字母、空白、標點與單一 emoji 各算 1 字；" +
+            "膚色、國旗、家庭等組合 emoji 由多個 Unicode 字元組成，會算成多個字）；" +
             `活動名稱與內文都不能出現${POSTER_BANNED_WORDS.map((w) => `「${w}」`).join("、")}。` +
             "不合格時回 400 INVALID_POSTER，message 會說明哪一條沒過，原本的海報不會被改動；請先自己檢查合格再貼。",
           parameters: [

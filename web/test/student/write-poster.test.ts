@@ -57,6 +57,23 @@ describe("POST /api/v1/bookings/:id/poster — write_poster 貼海報", () => {
     expect((await res.json()).code).toBe("NOT_OWNER");
   });
 
+  it("refuses someone else's 預約 with 403 NOT_OWNER even when the 海報 is unfit", async () => {
+    const bookingId = await bookA101(FAKE_KEYS.studentA);
+
+    const res = await writePoster(bookingId, { title: "", body: "短" }, FAKE_KEYS.studentB);
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("NOT_OWNER");
+  });
+
+  it("answers 404 NOT_FOUND for a 預約 that does not exist, even with an unfit 海報", async () => {
+    for (const id of ["00000000-0000-4000-8000-000000000000", "not-a-uuid"]) {
+      const res = await writePoster(id, { title: "", body: "短" });
+      expect(res.status).toBe(404);
+      expect((await res.json()).code).toBe("NOT_FOUND");
+    }
+  });
+
   it("answers 404 NOT_FOUND for a 預約 that does not exist", async () => {
     for (const id of ["00000000-0000-4000-8000-000000000000", "not-a-uuid"]) {
       const res = await writePoster(id, POSTER);
@@ -75,6 +92,16 @@ describe("POST /api/v1/bookings/:id/poster — write_poster 貼海報", () => {
     const body = await res.json();
     expect(body.code).toBe("BOOKING_CLOSED");
     expect(body.message).toContain("海報");
+  });
+
+  it("is refused with 403 BOOKING_CLOSED while 暫停, even with an unfit 海報", async () => {
+    const bookingId = await bookA101();
+    await setPaused(app.db, session.id, true);
+
+    const res = await writePoster(bookingId, { title: "", body: "短" });
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("BOOKING_CLOSED");
   });
 
   it("is written to the API 呼叫紀錄 as writePoster with the 預約's 可借格", async () => {
@@ -122,10 +149,15 @@ describe("海報合格規則 — write_poster refuses an unfit 海報 with 400 I
     }
   });
 
-  it("counts an emoji as one 字", async () => {
+  it("counts a simple emoji as one 字", async () => {
     const bookingId = await bookA101();
     const res = await writePoster(bookingId, { title: POSTER.title, body: "🎸".repeat(20) });
     expect(res.status).toBe(200);
+  });
+
+  it("counts a composite emoji by its Unicode characters, so 👍🏽 is 2 字", async () => {
+    // 👍🏽 = 👍 + skin tone modifier: 9 of them are 18 字, under the 20 字 minimum.
+    await expectInvalid({ title: POSTER.title, body: "👍🏽".repeat(9) }, "目前 18 字");
   });
 
   it("refuses 「保證錄取」 in the 活動名稱", async () => {

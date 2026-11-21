@@ -9,10 +9,10 @@ import type { Session } from "./sessions";
  */
 
 export const PAUSED_NOTICE = "老師已暫停預約與取消，請稍後再試；查詢可借格不受影響";
-export const POSTER_PAUSED_NOTICE = "老師已暫停，目前不能貼海報，請稍後再試；查詢可借格不受影響";
+export const POSTER_PAUSED_NOTICE = "教師已暫停，目前不能貼海報，請稍後再試；查詢可借格不受影響";
 
 /** 403 BOOKING_CLOSED when the 堂課 is 暫停 (預約、取消、貼海報; `notice` says which). */
-export function assertBookingOpen(session: Session, notice: string = PAUSED_NOTICE): void {
+export function assertNotPaused(session: Session, notice: string = PAUSED_NOTICE): void {
   if (session.paused) throw new ApiError(403, "BOOKING_CLOSED", notice);
 }
 

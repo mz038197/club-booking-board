@@ -1,5 +1,7 @@
+import type { BoardPoster } from "@/board/types";
 import type { Db } from "./db";
 import { ApiError } from "./http/errors";
+import { isUuid } from "./uuid";
 
 /**
  * 海報 data access. A 海報 belongs to one 預約 (one each; 再貼 overwrites) and goes
@@ -24,7 +26,10 @@ export const POSTER_BODY_MIN = 20;
 export const POSTER_BODY_MAX = 500;
 export const POSTER_BANNED_WORDS = ["保證錄取"] as const;
 
-/** 字數 = Unicode code points: a 中文字, a letter, a space, a punctuation mark or an emoji each count 1. */
+/**
+ * 字數 = Unicode code points: a 中文字, a letter, a space or a punctuation mark counts 1; a simple
+ * emoji counts 1, but a composite one (skin tone, ZWJ family, flag, variation selector) counts several.
+ */
 const countChars = (text: string) => [...text].length;
 
 const invalidPoster = (rule: string) => new ApiError(400, "INVALID_POSTER", `海報不合格：${rule}`);
@@ -57,26 +62,25 @@ export function parsePoster(body: unknown): PosterInput {
   return poster;
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** The `posters` columns a query selects as `p.title AS poster_title, p.body AS poster_body` (LEFT JOIN). */
+export type PosterCols = { poster_title: string | null; poster_body: string | null };
+
+/** The 海報 of a row selected with `PosterCols`; null when the 預約 has none. */
+export const posterOf = (r: PosterCols): BoardPoster | null =>
+  r.poster_title === null ? null : { title: r.poster_title, body: r.poster_body ?? "" };
 
 /**
- * Pins a 海報 on a student's own 預約 in a 堂課, replacing any earlier one.
- * Throws 404 NOT_FOUND (no such 預約 in this 堂課) / 403 NOT_OWNER.
+ * Pins a 海報 on a student's own 預約 in a 堂課, replacing any earlier one; returns it
+ * with the 預約's slot_id (for the API 呼叫紀錄). The 預約 is checked before the 海報:
+ * 404 NOT_FOUND (no such 預約 in this 堂課) / 403 NOT_OWNER come first, then `parsePoster`'s
+ * 400 INVALID_REQUEST / INVALID_POSTER on the raw request `body`.
  */
 export async function writePoster(
   db: Db,
-  input: {
-    sessionId: string;
-    bookingId: string;
-    studentId: number;
-    poster: PosterInput;
-    now: Date;
-    /** Called with the 預約's slot_id once found (before the owner check). */
-    onFound?: (slotId: string) => void;
-  },
-): Promise<Poster> {
+  input: { sessionId: string; bookingId: string; studentId: number; body: unknown; now: Date },
+): Promise<{ slotId: string; poster: Poster }> {
   const notFound = new ApiError(404, "NOT_FOUND", "找不到這筆預約");
-  if (!UUID.test(input.bookingId)) throw notFound;
+  if (!isUuid(input.bookingId)) throw notFound;
   return db.transaction(async (tx) => {
     // FOR SHARE: a concurrent 取消 waits for the 海報 (then deletes it with the 預約) or goes first (we see no 預約).
     const [booking] = await tx.query<{
@@ -95,29 +99,32 @@ export async function writePoster(
       [input.bookingId, input.sessionId],
     );
     if (!booking) throw notFound;
-    input.onFound?.(booking.slot_id);
     if (booking.student_id !== input.studentId) {
       throw new ApiError(403, "NOT_OWNER", "只能替自己的預約貼海報");
     }
+    const poster = parsePoster(input.body);
     await tx.query(
       `INSERT INTO posters (booking_id, title, body, updated_at) VALUES ($1, $2, $3, $4)
        ON CONFLICT (booking_id) DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body, updated_at = EXCLUDED.updated_at`,
-      [input.bookingId, input.poster.title, input.poster.body, input.now],
+      [input.bookingId, poster.title, poster.body, input.now],
     );
     return {
-      booking_id: input.bookingId,
-      title: input.poster.title,
-      body: input.poster.body,
-      date: booking.date,
-      start: booking.start_time,
-      end: booking.end_time,
-      room: booking.room,
+      slotId: booking.slot_id,
+      poster: {
+        booking_id: input.bookingId,
+        title: poster.title,
+        body: poster.body,
+        date: booking.date,
+        start: booking.start_time,
+        end: booking.end_time,
+        room: booking.room,
+      },
     };
   });
 }
 
 /**
- * 老師刪除海報: removes the 海報 of the 預約 on a 可借格; the 預約 itself stays.
+ * 教師刪除海報: removes the 海報 of the 預約 on a 可借格; the 預約 itself stays.
  * Returns who had posted it and its 活動名稱, for the 教師操作紀錄.
  * Throws 404 NOT_FOUND when the 可借格 has no 海報.
  */

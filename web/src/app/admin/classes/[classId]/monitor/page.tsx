@@ -3,9 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDeps } from "@/server/deps";
 import { managedClass } from "@/server/http/teacher-auth";
-import { isUuid } from "@/server/http/teacher-route";
 import { currentSessionOf, sessionById } from "@/server/sessions";
 import { requireTeacherPage } from "@/server/teacher-page";
+import { isUuid } from "@/server/uuid";
 import { ui } from "@/app/ui";
 import { MonitorBoard } from "./monitor-board";
 

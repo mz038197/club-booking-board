@@ -54,7 +54,7 @@ async function myBookingIds(key: string = FAKE_KEYS.studentA) {
   return ((await res.json()).bookings as { booking_id: string }[]).map((b) => b.booking_id);
 }
 
-describe("DELETE /api/teacher/sessions/:id/slots/:slotId/poster — 老師刪除海報", () => {
+describe("DELETE /api/teacher/sessions/:id/slots/:slotId/poster — 教師刪除海報", () => {
   it("takes the 海報 off the 日展開, while the 預約 stays", async () => {
     const bookingId = await bookWithPoster();
     expect(await monitorSlot(A101)).toMatchObject({ poster: POSTER });

@@ -1,7 +1,9 @@
+import type { BoardSlot } from "@/board/types";
 import type { Db } from "./db";
 import { isoOf, type RowTime } from "./db/rows";
 import { DEFAULT_HOLD_NAME } from "./holds";
 import { ApiError } from "./http/errors";
+import { posterOf, type PosterCols } from "./poster";
 
 /** 堂課 / 目前堂課 / 可借格 data access. */
 
@@ -20,17 +22,8 @@ export type Session = {
 
 export type SlotInput = { date: string; start: string; end: string; room: string };
 
-export type BoardSlot = {
-  slot_id: string;
-  date: string;
-  start: string;
-  end: string;
-  room: string;
-  status: "open" | "booked";
-  booked_by?: string;
-  /** 教師保留 (teacher views only; students see a plain 已借) */
-  held?: true;
-};
+/** One 可借格 of a 看板 — the same shape the browser renders. */
+export type { BoardSlot };
 
 export function makeSlotId(slot: SlotInput): string {
   return `${slot.date}_${slot.start}-${slot.end}_${slot.room}`;
@@ -220,19 +213,19 @@ export async function boardOf(
   sessionId: string,
   { teacherView = false, withPosters = false }: { teacherView?: boolean; withPosters?: boolean } = {},
 ): Promise<BoardSlot[]> {
-  const rows = await db.query<{
-    slot_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    room: string;
-    display_name: string | null;
-    booked: boolean;
-    held: boolean;
-    hold_name: string | null;
-    poster_title: string | null;
-    poster_body: string | null;
-  }>(
+  const rows = await db.query<
+    PosterCols & {
+      slot_id: string;
+      date: string;
+      start_time: string;
+      end_time: string;
+      room: string;
+      display_name: string | null;
+      booked: boolean;
+      held: boolean;
+      hold_name: string | null;
+    }
+  >(
     `SELECT s.slot_id, s.date, s.start_time, s.end_time, s.room,
             st.display_name, (b.id IS NOT NULL) AS booked,
             (h.slot_id IS NOT NULL) AS held, h.name AS hold_name,
@@ -249,14 +242,8 @@ export async function boardOf(
   return rows.map((r) => {
     const base = { slot_id: r.slot_id, date: r.date, start: r.start_time, end: r.end_time, room: r.room };
     if (r.booked) {
-      return {
-        ...base,
-        status: "booked",
-        booked_by: r.display_name ?? "",
-        ...(withPosters && r.poster_title !== null
-          ? { poster: { title: r.poster_title, body: r.poster_body ?? "" } }
-          : {}),
-      };
+      const poster = withPosters ? posterOf(r) : null;
+      return { ...base, status: "booked", booked_by: r.display_name ?? "", ...(poster ? { poster } : {}) };
     }
     if (r.held) {
       return {

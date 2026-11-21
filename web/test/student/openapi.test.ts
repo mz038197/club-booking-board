@@ -168,6 +168,15 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
     expect(JSON.stringify(op.responses["400"])).toContain("INVALID_POSTER");
   });
 
+  it("warns the Agent that a composite emoji may count as several 字 (字數 is Unicode characters)", async () => {
+    const doc = await fetchDoc();
+
+    const op = doc.paths["/bookings/{id}/poster"].post;
+    expect(op.description).toContain("Unicode");
+    expect(op.description).toMatch(/組合.*emoji.*多個字/);
+    expect(op.description).not.toMatch(/emoji 都各算 1 字/);
+  });
+
   it("declares Bearer auth for every operation", async () => {
     const doc = await fetchDoc();
 

@@ -11,6 +11,8 @@ export type AdminAction =
   | "generateSlots"
   | "removeSlot"
   | "replaceSlots"
+  | "setHold"
+  | "releaseHold"
   | "forceCancel"
   | "resetSession"
   | "displaySettings"

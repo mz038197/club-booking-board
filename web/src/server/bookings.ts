@@ -51,11 +51,21 @@ export async function bookSlot(
   return db.transaction(async (tx) => {
     // FOR KEY SHARE: a teacher's 移除 / 覆寫 (which lock the 可借格 FOR UPDATE) either
     // waits for this 預約 (and then sees it 已借) or deletes first (and we see no 可借格).
-    const [slot] = await tx.query<{ date: string; start_time: string; end_time: string; room: string }>(
-      `SELECT date, start_time, end_time, room FROM slots WHERE session_id = $1 AND slot_id = $2 FOR KEY SHARE`,
+    // A 教師保留 is set under FOR UPDATE on the 可借格, so the `held` read here is settled.
+    const [found] = await tx.query<{
+      date: string;
+      start_time: string;
+      end_time: string;
+      room: string;
+      held: boolean;
+    }>(
+      `SELECT s.date, s.start_time, s.end_time, s.room,
+              EXISTS (SELECT 1 FROM slot_holds h WHERE h.session_id = s.session_id AND h.slot_id = s.slot_id) AS held
+         FROM slots s WHERE s.session_id = $1 AND s.slot_id = $2 FOR KEY SHARE OF s`,
       [input.sessionId, input.slotId],
     );
-    if (!slot) throw invalidSlot;
+    if (!found) throw invalidSlot;
+    const { held, ...slot } = found;
 
     // 每人上限: lock the student's 名冊 row so their simultaneous 預約 count one at a time.
     // Count in a separate statement: under READ COMMITTED it then sees 預約 committed while we waited.
@@ -74,6 +84,10 @@ export async function bookSlot(
       throw new ApiError(409, "LIMIT_REACHED", limitReachedMessage(limits.per_student_limit));
     }
 
+    const slotTaken = new ApiError(409, "SLOT_TAKEN", "這個可借格已經被借走了，請換一格");
+    // 教師保留 is 已借 to students (ADR 0006).
+    if (held) throw slotTaken;
+
     let row: { id: string; created_at: RowTime } | undefined;
     try {
       [row] = await tx.query<{ id: string; created_at: RowTime }>(
@@ -87,7 +101,7 @@ export async function bookSlot(
       if ((error as { code?: unknown }).code === FOREIGN_KEY_VIOLATION) throw invalidSlot;
       throw error;
     }
-    if (!row) throw new ApiError(409, "SLOT_TAKEN", "這個可借格已經被借走了，請換一格");
+    if (!row) throw slotTaken;
     await recordFirstBooking(tx, input.sessionId, input.studentId, input.now);
     return toBooking({ ...slot, ...row, slot_id: input.slotId });
   });

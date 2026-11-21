@@ -1,4 +1,4 @@
-import type { BoardPoster, BoardSlot, SlotStatus } from "./types";
+import type { BoardSlot, SlotStatus } from "./types";
 import { compareRooms } from "./groupSlots";
 
 export type YearMonth = {
@@ -26,14 +26,8 @@ export type CalendarMonth = {
   days: CalendarDayCell[];
 };
 
-export type DayExpandSlot = {
-  start: string;
-  end: string;
-  room: string;
-  status: SlotStatus;
-  booked_by?: string;
-  poster?: BoardPoster;
-};
+/** A 可借格 of the 日展開: the whole board slot, so its slot_id, 教師保留 and 海報 ride along. */
+export type DayExpandSlot = BoardSlot;
 
 const CHIP_VISIBLE_MAX = 4;
 
@@ -124,14 +118,7 @@ export function visibleRoomChips(chips: RoomChip[]): { chips: RoomChip[]; overfl
 }
 
 export function dayExpandSlots(slots: BoardSlot[], date: string): DayExpandSlot[] {
-  return slotsOnDate(slots, date).map((slot) => ({
-    start: slot.start,
-    end: slot.end,
-    room: slot.room,
-    status: slot.status,
-    booked_by: slot.booked_by,
-    ...(slot.poster ? { poster: slot.poster } : {}),
-  }));
+  return slotsOnDate(slots, date);
 }
 
 export function slotStatusLabel(status: SlotStatus): string {

@@ -378,8 +378,6 @@ function DayMatrix({
   }
   const times = [...new Map(day.map((x) => [`${x.start}–${x.end}`, x])).keys()];
   const dayRooms = rooms.filter((r) => day.some((x) => x.room === r));
-  const slotIdOf = (x: { start: string; end: string; room: string }) =>
-    `${selected}_${x.start}-${x.end}_${x.room}`;
   return (
     <div className={`${s.card} ${s.matrixWrap}`}>
       <table className={s.matrix}>
@@ -410,9 +408,8 @@ function DayMatrix({
                     </td>
                   );
                 }
-                const isNew = flash?.ids.has(slotIdOf(x)) ?? false;
-                const full = slots.find((y) => y.slot_id === slotIdOf(x));
-                const held = full?.held === true;
+                const isNew = flash?.ids.has(x.slot_id) ?? false;
+                const held = x.held === true;
                 return (
                   <td
                     key={isNew ? `${r}-${flash?.key}` : r}
@@ -428,7 +425,7 @@ function DayMatrix({
                       </div>
                     ) : null}
                     {isNew ? <span className={s.newBadge}>剛預約！</span> : null}
-                    {full ? cellAction?.(full) : null}
+                    {cellAction?.(x)}
                   </td>
                 );
               })}

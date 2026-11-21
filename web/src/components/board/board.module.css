@@ -339,6 +339,38 @@
   color: var(--surface);
   font-size: 20px;
 }
+/* 教師保留 (teacher views only): striped, so it reads apart from a student's 預約 */
+.cellHeld {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--chip),
+    var(--chip) 8px,
+    color-mix(in srgb, var(--chip) 70%, var(--surface)) 8px,
+    color-mix(in srgb, var(--chip) 70%, var(--surface)) 16px
+  );
+}
+.heldTag {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+}
+.cellAction {
+  display: block;
+  margin: 4px auto 0;
+  padding: 0 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.cellAction:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
 .flash {
   animation: pop 1.2s ease-out;
 }

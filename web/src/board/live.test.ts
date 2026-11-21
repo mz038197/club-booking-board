@@ -28,6 +28,13 @@ describe("newlyBooked — 預約成功通知", () => {
     expect(newlyBooked(prev, next)).toEqual([booked("302", "李○華", "2026-12-17")]);
   });
 
+  it("ignores a 教師保留 set since the last poll (it is not a 預約)", () => {
+    const prev = [open("301")];
+    const next: BoardSlot[] = [{ ...booked("301", "熱舞社"), held: true }];
+
+    expect(newlyBooked(prev, next)).toEqual([]);
+  });
+
   it("ignores 可借格 that stayed 已借 or were cancelled", () => {
     const prev = [booked("301", "王○明"), booked("302", "李○華")];
     const next = [booked("301", "王○明"), open("302")];

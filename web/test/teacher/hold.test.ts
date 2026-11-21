@@ -162,15 +162,39 @@ describe("教師操作紀錄", () => {
 });
 
 describe("保留與其他教師操作", () => {
-  it("survives 重置堂課", async () => {
+  it("survives 重置堂課, while the students' 預約 are cleared", async () => {
     await setHold(SLOT_301, { name: "熱舞社" });
+    await app.request("POST", "/api/v1/bookings", { key: FAKE_KEYS.studentB, body: { slot_id: SLOT_302 } });
 
     const res = await app.request("POST", `/api/teacher/sessions/${session.id}/reset`, {
       cookies: teacherCookie(app, teacher),
     });
 
     expect(res.status).toBe(204);
-    expect(slotOf(await studentSlots(), SLOT_301)).toMatchObject({ status: "booked", booked_by: "熱舞社" });
+    const slots = await studentSlots();
+    expect(slotOf(slots, SLOT_301)).toMatchObject({ status: "booked", booked_by: "熱舞社" });
+    expect(slotOf(slots, SLOT_302)?.status).toBe("open");
+  });
+
+  it("keeps the 保留 of a 可借格 that 整批覆寫 retains", async () => {
+    await setHold(SLOT_301, { name: "熱舞社" });
+    await setHold(SLOT_302, { name: "吉他社" });
+
+    const res = await app.request("PUT", `/api/teacher/sessions/${session.id}/slots`, {
+      cookies: teacherCookie(app, teacher),
+      body: {
+        slots: [
+          { date: "2026-12-16", start: "12:10", end: "13:00", room: "302" },
+          { date: "2026-12-16", start: "13:10", end: "14:00", room: "302" },
+        ],
+      },
+    });
+
+    expect(res.status).toBe(200);
+    const slots = await studentSlots();
+    expect(slotOf(slots, SLOT_301)).toBeUndefined();
+    expect(slotOf(slots, SLOT_302)).toMatchObject({ status: "booked", booked_by: "吉他社" });
+    expect(slotOf(slots, "2026-12-16_13:10-14:00_302")?.status).toBe("open");
   });
 
   it("does not block 整批覆寫; a dropped 可借格 loses its 保留", async () => {
@@ -214,6 +238,10 @@ describe("保留與其他教師操作", () => {
   });
 
   it("does not count toward any student's 每人上限", async () => {
+    await app.request("PUT", `/api/teacher/sessions/${session.id}/rules`, {
+      cookies: teacherCookie(app, teacher),
+      body: { per_student_limit: 1 },
+    });
     await setHold(SLOT_301);
 
     const res = await app.request("POST", "/api/v1/bookings", {

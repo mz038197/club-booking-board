@@ -19,9 +19,20 @@ export type Poster = PosterInput & {
   room: string;
 };
 
+/** 海報合格規則 (also spelled out to the Agent in the writePoster description). */
+export const POSTER_BODY_MIN = 20;
+export const POSTER_BODY_MAX = 500;
+export const POSTER_BANNED_WORDS = ["保證錄取"] as const;
+
+/** 字數 = Unicode code points: a 中文字, a letter, a space, a punctuation mark or an emoji each count 1. */
+const countChars = (text: string) => [...text].length;
+
+const invalidPoster = (rule: string) => new ApiError(400, "INVALID_POSTER", `海報不合格：${rule}`);
+
 /**
  * The one place a 海報 is checked before it is saved: a parsed JSON body (non-JSON → null)
- * must be `{ title: string, body: string }`, else 400 INVALID_REQUEST.
+ * must be `{ title: string, body: string }`, else 400 INVALID_REQUEST. Both are trimmed, then
+ * must pass the 海報合格規則, else 400 INVALID_POSTER naming the rule that failed.
  */
 export function parsePoster(body: unknown): PosterInput {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
@@ -31,7 +42,19 @@ export function parsePoster(body: unknown): PosterInput {
   if (typeof title !== "string" || typeof text !== "string") {
     throw new ApiError(400, "INVALID_REQUEST", "請求內容必須包含文字欄位 title（活動名稱）與 body（內文）");
   }
-  return { title, body: text };
+  const poster = { title: title.trim(), body: text.trim() };
+  if (poster.title === "") throw invalidPoster("活動名稱不能是空白");
+  if (poster.body === "") throw invalidPoster("內文不能是空白");
+  const length = countChars(poster.body);
+  if (length < POSTER_BODY_MIN || length > POSTER_BODY_MAX) {
+    throw invalidPoster(`內文要 ${POSTER_BODY_MIN}–${POSTER_BODY_MAX} 字，目前 ${length} 字`);
+  }
+  for (const word of POSTER_BANNED_WORDS) {
+    if (poster.title.includes(word) || poster.body.includes(word)) {
+      throw invalidPoster(`活動名稱與內文不能出現「${word}」`);
+    }
+  }
+  return poster;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

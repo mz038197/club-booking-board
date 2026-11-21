@@ -6,6 +6,8 @@
  * Served at GET /api/v1/openapi.json and copied from the Agent Builder 設定 card.
  */
 
+import { POSTER_BANNED_WORDS, POSTER_BODY_MAX, POSTER_BODY_MIN } from "./poster";
+
 const SLOT_ID_EXAMPLE = "2026-12-09_13:00-14:00_A101";
 
 /** Every error code a student endpoint can answer with. */
@@ -140,7 +142,11 @@ export function studentOpenApi(apiBaseUrl: string) {
           description:
             "你先寫好海報的活動名稱（title）與內文（body），再以 booking_id 貼到自己在目前堂課的一筆預約上，看板會顯示這張海報。" +
             "海報的日期、時段、教室由後端從這筆預約帶入，不必也不能自己填。一筆預約只有一張海報，再貼一次會取代舊的；" +
-            "取消預約時海報一起消失。只能貼到自己的預約。堂課暫停時無法貼海報（403 BOOKING_CLOSED）。成功時回傳看板實際存下的海報。",
+            "取消預約時海報一起消失。只能貼到自己的預約。堂課暫停時無法貼海報（403 BOOKING_CLOSED）。成功時回傳看板實際存下的海報。" +
+            `海報合格規則：活動名稱與內文去除前後空白後都不能是空的；內文 ${POSTER_BODY_MIN}–${POSTER_BODY_MAX} 字` +
+            "（去除前後空白後計算，中文字、英文字母、空白、標點、emoji 都各算 1 字）；" +
+            `活動名稱與內文都不能出現${POSTER_BANNED_WORDS.map((w) => `「${w}」`).join("、")}。` +
+            "不合格時回 400 INVALID_POSTER，message 會說明哪一條沒過，原本的海報不會被改動；請先自己檢查合格再貼。",
           parameters: [
             {
               name: "id",
@@ -165,7 +171,10 @@ export function studentOpenApi(apiBaseUrl: string) {
           },
           responses: {
             "200": { description: "貼好的海報", content: json("Poster") },
-            "400": errorResponse("INVALID_REQUEST：請求內容不是 JSON，或 title、body 不是文字"),
+            "400": errorResponse(
+              "INVALID_POSTER：海報不合格（空白、內文字數不在範圍內或含禁用字），message 說明哪一條沒過；" +
+                "INVALID_REQUEST：請求內容不是 JSON，或 title、body 不是文字",
+            ),
             "401": errorRef("Unauthorized"),
             "403": errorResponse(
               "NOT_OWNER：這筆預約不是你的；NOT_A_STUDENT：不是課堂金鑰；BOOKING_CLOSED：沒有堂課或已暫停",

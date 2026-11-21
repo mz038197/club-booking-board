@@ -87,6 +87,66 @@ describe("POST /api/v1/bookings/:id/poster — write_poster 貼海報", () => {
   });
 });
 
+describe("海報合格規則 — write_poster refuses an unfit 海報 with 400 INVALID_POSTER", () => {
+  async function expectInvalid(poster: unknown, mention: string) {
+    const bookingId = await bookA101();
+    const res = await writePoster(bookingId, poster);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe("INVALID_POSTER");
+    expect(body.message).toContain(mention);
+  }
+
+  it("refuses a blank 活動名稱", async () => {
+    await expectInvalid({ title: "  \n ", body: POSTER.body }, "活動名稱");
+  });
+
+  it("refuses a blank 內文", async () => {
+    await expectInvalid({ title: POSTER.title, body: "\t  " }, "內文");
+  });
+
+  it("refuses a 內文 of 19 字, counting after trimming the surrounding whitespace", async () => {
+    await expectInvalid({ title: POSTER.title, body: `  ${"字".repeat(19)}\n ` }, "20");
+  });
+
+  it("refuses a 內文 of 501 字", async () => {
+    await expectInvalid({ title: POSTER.title, body: "字".repeat(501) }, "500");
+  });
+
+  it("accepts a 內文 of exactly 20 字 and exactly 500 字", async () => {
+    const bookingId = await bookA101();
+    for (const body of ["字".repeat(20), "字".repeat(500)]) {
+      const res = await writePoster(bookingId, { title: POSTER.title, body });
+      expect(res.status).toBe(200);
+      expect((await res.json()).body).toBe(body);
+    }
+  });
+
+  it("counts an emoji as one 字", async () => {
+    const bookingId = await bookA101();
+    const res = await writePoster(bookingId, { title: POSTER.title, body: "🎸".repeat(20) });
+    expect(res.status).toBe(200);
+  });
+
+  it("refuses 「保證錄取」 in the 活動名稱", async () => {
+    await expectInvalid({ title: "吉他社保證錄取", body: POSTER.body }, "保證錄取");
+  });
+
+  it("refuses 「保證錄取」 in the 內文", async () => {
+    await expectInvalid({ title: POSTER.title, body: `${POSTER.body}報名就保證錄取！` }, "保證錄取");
+  });
+
+  it("leaves the 海報 already pinned untouched when a new one is refused", async () => {
+    const bookingId = await bookA101();
+    await writePoster(bookingId, POSTER);
+
+    const res = await writePoster(bookingId, { title: "保證錄取", body: POSTER.body });
+
+    expect(res.status).toBe(400);
+    expect((await monitorSlot()).poster).toEqual(POSTER);
+  });
+});
+
 /** The 可借格 as the teacher's 監看 (月曆監看 日展開) sees it. */
 async function monitorSlot(slotId: string = A101) {
   const res = await app.request("GET", `/api/teacher/sessions/${session.id}/monitor`, {
@@ -114,11 +174,11 @@ describe("海報 on the teacher's 看板 (日展開)", () => {
     const bookingId = await bookA101();
     await writePoster(bookingId, POSTER);
 
-    const res = await writePoster(bookingId, { title: "吉他社迎新 第二版", body: "改版後的內文" });
+    const res = await writePoster(bookingId, { title: "吉他社迎新 第二版", body: "改版後的內文：歡迎新同學加入吉他社，一起彈唱第一首歌！" });
 
     expect(res.status).toBe(200);
     expect((await res.json()).title).toBe("吉他社迎新 第二版");
-    expect((await monitorSlot()).poster).toEqual({ title: "吉他社迎新 第二版", body: "改版後的內文" });
+    expect((await monitorSlot()).poster).toEqual({ title: "吉他社迎新 第二版", body: "改版後的內文：歡迎新同學加入吉他社，一起彈唱第一首歌！" });
   });
 
   it("has no 海報 on a 可借格 nobody wrote one for", async () => {

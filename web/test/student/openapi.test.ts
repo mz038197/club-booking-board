@@ -158,6 +158,16 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
     expect(JSON.stringify(doc)).not.toMatch(/poster\/copy|PosterCopy|slogan/);
   });
 
+  it("tells the Agent the 海報合格規則 before it writes: 字數, 禁用字, and the 400 INVALID_POSTER answer", async () => {
+    const doc = await fetchDoc();
+
+    const op = doc.paths["/bookings/{id}/poster"].post;
+    expect(op.description).toMatch(/20.*500 字/);
+    expect(op.description).toContain("保證錄取");
+    expect(op.description).toContain("INVALID_POSTER");
+    expect(JSON.stringify(op.responses["400"])).toContain("INVALID_POSTER");
+  });
+
   it("declares Bearer auth for every operation", async () => {
     const doc = await fetchDoc();
 

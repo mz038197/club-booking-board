@@ -1,5 +1,6 @@
 import type { Db } from "./db";
 import { isoOf, type RowTime } from "./db/rows";
+import { DEFAULT_HOLD_NAME } from "./holds";
 import { ApiError } from "./http/errors";
 
 /** 堂課 / 目前堂課 / 可借格 data access. */
@@ -27,6 +28,8 @@ export type BoardSlot = {
   room: string;
   status: "open" | "booked";
   booked_by?: string;
+  /** 教師保留 (teacher views only; students see a plain 已借) */
+  held?: true;
 };
 
 export function makeSlotId(slot: SlotInput): string {
@@ -208,12 +211,14 @@ export async function currentSessionOf(db: Db, classId: number): Promise<Session
 
 /**
  * 看板: every 可借格 of a 堂課 with its booking state and the booker's 顯示名稱.
+ * A 教師保留 is 已借 with the 保留 name as the booker (ADR 0006); only with
+ * `teacherView` is it marked `held: true`, so students and agents never see a third state.
  * `withPosters` adds each 預約's 海報 (teacher views; the student's listSlots never carries them).
  */
 export async function boardOf(
   db: Db,
   sessionId: string,
-  options: { withPosters?: boolean } = {},
+  { teacherView = false, withPosters = false }: { teacherView?: boolean; withPosters?: boolean } = {},
 ): Promise<BoardSlot[]> {
   const rows = await db.query<{
     slot_id: string;
@@ -223,30 +228,44 @@ export async function boardOf(
     room: string;
     display_name: string | null;
     booked: boolean;
+    held: boolean;
+    hold_name: string | null;
     poster_title: string | null;
     poster_body: string | null;
   }>(
     `SELECT s.slot_id, s.date, s.start_time, s.end_time, s.room,
             st.display_name, (b.id IS NOT NULL) AS booked,
+            (h.slot_id IS NOT NULL) AS held, h.name AS hold_name,
             p.title AS poster_title, p.body AS poster_body
        FROM slots s
        LEFT JOIN bookings b ON b.session_id = s.session_id AND b.slot_id = s.slot_id
        LEFT JOIN students st ON st.student_id = b.student_id
+       LEFT JOIN slot_holds h ON h.session_id = s.session_id AND h.slot_id = s.slot_id
        LEFT JOIN posters p ON p.booking_id = b.id
       WHERE s.session_id = $1
       ORDER BY s.date, s.start_time, s.room`,
     [sessionId],
   );
-  return rows.map((r) => ({
-    slot_id: r.slot_id,
-    date: r.date,
-    start: r.start_time,
-    end: r.end_time,
-    room: r.room,
-    status: r.booked ? "booked" : "open",
-    ...(r.booked ? { booked_by: r.display_name ?? "" } : {}),
-    ...(options.withPosters && r.poster_title !== null
-      ? { poster: { title: r.poster_title, body: r.poster_body ?? "" } }
-      : {}),
-  }));
+  return rows.map((r) => {
+    const base = { slot_id: r.slot_id, date: r.date, start: r.start_time, end: r.end_time, room: r.room };
+    if (r.booked) {
+      return {
+        ...base,
+        status: "booked",
+        booked_by: r.display_name ?? "",
+        ...(withPosters && r.poster_title !== null
+          ? { poster: { title: r.poster_title, body: r.poster_body ?? "" } }
+          : {}),
+      };
+    }
+    if (r.held) {
+      return {
+        ...base,
+        status: "booked",
+        booked_by: r.hold_name ?? DEFAULT_HOLD_NAME,
+        ...(teacherView ? { held: true as const } : {}),
+      };
+    }
+    return { ...base, status: "open" };
+  });
 }

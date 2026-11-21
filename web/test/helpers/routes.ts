@@ -35,6 +35,8 @@ export const ROUTES: Record<string, () => Promise<RouteModule>> = {
   "/api/teacher/sessions/:id/slots/:slotId": () => import("@/app/api/teacher/sessions/[id]/slots/[slotId]/route"),
   "/api/teacher/sessions/:id/slots/:slotId/hold": () =>
     import("@/app/api/teacher/sessions/[id]/slots/[slotId]/hold/route"),
+  "/api/teacher/sessions/:id/slots/:slotId/poster": () =>
+    import("@/app/api/teacher/sessions/[id]/slots/[slotId]/poster/route"),
   "/api/teacher/sessions/:id/monitor": () => import("@/app/api/teacher/sessions/[id]/monitor/route"),
   "/api/teacher/sessions/:id/display-settings": () =>
     import("@/app/api/teacher/sessions/[id]/display-settings/route"),

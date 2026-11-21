@@ -84,7 +84,7 @@ export function studentOpenApi(apiBaseUrl: string) {
           summary: "預約一個可借格",
           description:
             "以 slot_id 預約目前堂課的一個可借格。一個可借格只能被一人預約；每人可預約的格數有上限。" +
-            "堂課暫停或不在開放時間內時無法預約（403 BOOKING_CLOSED）。",
+            "堂課暫停時無法預約（403 BOOKING_CLOSED）。",
           requestBody: {
             required: true,
             description: "要預約的可借格",
@@ -111,7 +111,7 @@ export function studentOpenApi(apiBaseUrl: string) {
           operationId: "cancelBooking",
           summary: "取消我的一筆預約",
           description:
-            "以 booking_id 取消自己在目前堂課的預約，只能取消自己的。堂課暫停或不在開放時間內時無法取消（403 BOOKING_CLOSED）。",
+            "以 booking_id 取消自己在目前堂課的預約，只能取消自己的。堂課暫停時無法取消（403 BOOKING_CLOSED）。",
           parameters: [
             {
               name: "id",
@@ -125,7 +125,7 @@ export function studentOpenApi(apiBaseUrl: string) {
             "204": { description: "已取消，沒有回應內容" },
             "401": errorRef("Unauthorized"),
             "403": errorResponse(
-              "NOT_OWNER：這筆預約不是你的；NOT_A_STUDENT：不是課堂金鑰；BOOKING_CLOSED：沒有堂課、已暫停或不在開放時間",
+              "NOT_OWNER：這筆預約不是你的；NOT_A_STUDENT：不是課堂金鑰；BOOKING_CLOSED：沒有堂課或已暫停",
             ),
             "404": errorResponse("NOT_FOUND：目前堂課沒有這筆預約"),
             "500": errorRef("InternalError"),
@@ -168,7 +168,7 @@ export function studentOpenApi(apiBaseUrl: string) {
       responses: {
         Unauthorized: errorResponse("UNAUTHORIZED：沒有金鑰，或金鑰無效、已停用、課堂尚未開始、已過期"),
         Forbidden: errorResponse(
-          "NOT_A_STUDENT：這把金鑰不是學生的課堂金鑰；BOOKING_CLOSED：班級還沒有堂課（預約與取消另有：堂課已暫停、不在開放時間）",
+          "NOT_A_STUDENT：這把金鑰不是學生的課堂金鑰；BOOKING_CLOSED：班級還沒有堂課（預約與取消另有：堂課已暫停）",
         ),
         InternalError: errorResponse("INTERNAL_ERROR：伺服器發生錯誤，請稍後再試"),
         RouterUnavailable: errorResponse("ROUTER_UNAVAILABLE：暫時無法確認身分，請稍後再試"),
@@ -272,7 +272,7 @@ export function studentOpenApi(apiBaseUrl: string) {
               type: "string",
               enum: [...STUDENT_ERROR_CODES],
               description:
-                "錯誤代碼：UNAUTHORIZED 金鑰無效或過期；NOT_A_STUDENT 不是學生的課堂金鑰；BOOKING_CLOSED 沒有堂課、已暫停或不在開放時間；" +
+                "錯誤代碼：UNAUTHORIZED 金鑰無效或過期；NOT_A_STUDENT 不是學生的課堂金鑰；BOOKING_CLOSED 沒有堂課或已暫停；" +
                 "ROUTER_UNAVAILABLE 暫時無法確認身分；SLOT_TAKEN 可借格已被預約；INVALID_SLOT 沒有這個可借格；NOT_OWNER 不是自己的預約；" +
                 "NOT_FOUND 找不到預約；LIMIT_REACHED 已達每人上限；INVALID_POSTER 海報資料不完整；INVALID_REQUEST 請求格式錯誤；INTERNAL_ERROR 伺服器錯誤",
             },

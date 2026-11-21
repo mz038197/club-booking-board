@@ -19,7 +19,7 @@ export const POST = studentRoute("bookSlot", async ({ req, deps, student, sessio
   const slotId = await slotIdFrom(req);
   log.slotId = slotId;
   const now = deps.now();
-  assertBookingOpen(session, now);
+  assertBookingOpen(session);
   const booking = await bookSlot(deps.db, {
     sessionId: session.id,
     slotId,

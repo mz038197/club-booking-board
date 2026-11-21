@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const DELETE = studentRoute<{ id: string }>(
   "cancelBooking",
   async ({ deps, student, session, log }, { id }) => {
-    assertBookingOpen(session, deps.now());
+    assertBookingOpen(session);
     await cancelBooking(deps.db, {
       sessionId: session.id,
       bookingId: id,

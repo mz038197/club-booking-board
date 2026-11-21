@@ -17,7 +17,6 @@ export const GET = sessionRoute(async ({ deps, session }) => {
       is_current: current?.id === session.id,
       paused: session.paused,
       per_student_limit: session.perStudentLimit,
-      booking_window: session.bookingWindow,
     },
     slots,
   });

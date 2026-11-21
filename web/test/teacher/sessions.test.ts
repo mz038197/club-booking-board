@@ -52,7 +52,7 @@ describe("建立堂課並複製舊堂課", () => {
       body: { slot_id: "2026-12-09_12:10-13:00_A101" },
     });
     expect(booked.status).toBe(201);
-    const rules = { per_student_limit: 3, booking_window: { start: "12:30", end: "15:10" } };
+    const rules = { per_student_limit: 3 };
     const ruled = await app.request("PUT", `/api/teacher/sessions/${old.id}/rules`, { ...asTeacher(), body: rules });
     expect(ruled.status).toBe(200);
     // 暫停 is an in-class switch, not a rule: never copied.

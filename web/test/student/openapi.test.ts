@@ -124,7 +124,7 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
     const doc = await fetchDoc();
     const session = await createSession(app.db, { classId: 56, name: "12/09" });
     // studentA books twice (setup + bookSlot's example), so allow 2 per student.
-    await setBookingRules(app.db, session.id, { perStudentLimit: 2, bookingWindow: null });
+    await setBookingRules(app.db, session.id, { perStudentLimit: 2 });
     await addSlots(app.db, session.id, [
       { date: "2026-12-09", start: "13:00", end: "14:00", room: "A101" },
       { date: "2026-12-09", start: "13:00", end: "14:00", room: "A102" },
@@ -175,6 +175,13 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
         "INTERNAL_ERROR",
       ].sort(),
     );
+  });
+
+  it("explains BOOKING_CLOSED by 沒有堂課 and 暫停 only, never a time of day", async () => {
+    const text = JSON.stringify(await fetchDoc());
+
+    expect(text).toContain("暫停");
+    expect(text).not.toMatch(/開放時間|時間窗|可預約時間/);
   });
 
   it("describes every operation, parameter and field in Chinese", async () => {

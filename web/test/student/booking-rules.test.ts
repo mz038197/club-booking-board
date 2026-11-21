@@ -5,7 +5,7 @@ import { addSlots, createSession, type Session } from "@/server/sessions";
 import { setupTestApp, type TestApp } from "../helpers/app";
 import { teacherCookie } from "../helpers/teacher";
 
-// 預約規則 (每人上限、時間窗) and 暫停, as the student's Agent sees them.
+// 預約規則 (每人上限) and 暫停, as the student's Agent sees them.
 
 /** Taipei is UTC+8: 13:00 Taipei = 05:00Z. */
 const taipei = (hhmm: string) => new Date(`2026-12-09T${hhmm}:00+08:00`);
@@ -80,7 +80,7 @@ describe("每人上限", () => {
   });
 
   it("follows the teacher's 每人上限, per student", async () => {
-    await setRules({ per_student_limit: 2, booking_window: null });
+    await setRules({ per_student_limit: 2 });
 
     expect((await book(FAKE_KEYS.studentA, A101)).status).toBe(201);
     expect((await book(FAKE_KEYS.studentA, A102)).status).toBe(201);
@@ -99,7 +99,7 @@ describe("每人上限", () => {
 describe("每人上限 under concurrency", () => {
   it("never lets one student exceed the limit with simultaneous 預約", async () => {
     await start();
-    await setRules({ per_student_limit: 2, booking_window: null });
+    await setRules({ per_student_limit: 2 });
     const rooms = ["B1", "B2", "B3", "B4", "B5", "B6"];
     await addSlots(
       app.db,
@@ -150,75 +150,43 @@ describe("暫停", () => {
   });
 });
 
-describe("時間窗", () => {
+describe("no 時間窗: while the 課堂金鑰 is valid, any time of day is open", () => {
   beforeEach(() => start());
 
-  it("refuses 預約 before the window with BOOKING_CLOSED saying when it opens", async () => {
-    await setRules({ per_student_limit: 1, booking_window: { start: "12:30", end: "15:10" } });
-    clock = taipei("12:29");
+  it.each(["00:00", "03:00", "12:29", "15:10", "23:59"])("allows 預約 and 取消 at %s (Taipei)", async (hhmm) => {
+    clock = taipei(hhmm);
 
-    const res = await book(FAKE_KEYS.studentA, A101);
+    const booked = await book(FAKE_KEYS.studentA, A101);
+    expect(booked.status).toBe(201);
+    const { booking_id } = await booked.json();
 
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.code).toBe("BOOKING_CLOSED");
-    expect(body.message).toContain("12:30");
-    expect((await app.request("GET", "/api/v1/slots", { key: FAKE_KEYS.studentA })).status).toBe(200);
-  });
-
-  it("allows 預約 and 取消 inside the window (start inclusive, end exclusive)", async () => {
-    await setRules({ per_student_limit: 1, booking_window: { start: "12:30", end: "15:10" } });
-    clock = taipei("12:30");
-    const booked = await (await book(FAKE_KEYS.studentA, A101)).json();
-    expect(booked.slot_id).toBe(A101);
-
-    clock = taipei("15:09");
-    const cancel = await app.request("DELETE", `/api/v1/bookings/${booked.booking_id}`, {
-      key: FAKE_KEYS.studentA,
-    });
+    const cancel = await app.request("DELETE", `/api/v1/bookings/${booking_id}`, { key: FAKE_KEYS.studentA });
     expect(cancel.status).toBe(204);
   });
 
-  it("refuses 取消 after the window with a message naming the window", async () => {
+  it("ignores a booking_window still sent by an old client", async () => {
     await setRules({ per_student_limit: 1, booking_window: { start: "12:30", end: "15:10" } });
-    const booked = await (await book(FAKE_KEYS.studentA, A101)).json();
-    clock = taipei("15:10");
-
-    const res = await app.request("DELETE", `/api/v1/bookings/${booked.booking_id}`, {
-      key: FAKE_KEYS.studentA,
-    });
-
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.code).toBe("BOOKING_CLOSED");
-    expect(body.message).toContain("12:30–15:10");
-    expect(await myBookings()).toHaveLength(1);
-  });
-
-  it("has no window by default", async () => {
     clock = taipei("03:00");
+
     expect((await book(FAKE_KEYS.studentA, A101)).status).toBe(201);
   });
 });
 
-describe("三種 BOOKING_CLOSED", () => {
-  it("have distinguishable messages (無堂課, 暫停, 時間窗)", async () => {
+describe("兩種 BOOKING_CLOSED", () => {
+  it("have distinguishable messages (無堂課, 暫停)", async () => {
     await start();
     const noSession = await (
       await app.request("POST", "/api/v1/bookings", { key: FAKE_KEYS.otherClass, body: { slot_id: A101 } })
     ).json();
 
-    await setRules({ per_student_limit: 1, booking_window: { start: "14:00", end: "15:00" } });
-    const window = await (await book(FAKE_KEYS.studentA, A101)).json();
-
     await setPaused(true);
     const paused = await (await book(FAKE_KEYS.studentA, A101)).json();
 
-    const messages = [noSession, window, paused].map((b) => {
+    const messages = [noSession, paused].map((b) => {
       expect(b.code).toBe("BOOKING_CLOSED");
       return b.message;
     });
-    expect(new Set(messages).size).toBe(3);
+    expect(new Set(messages).size).toBe(2);
   });
 });
 

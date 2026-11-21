@@ -1,33 +1,94 @@
+import type { Db } from "./db";
 import { ApiError } from "./http/errors";
 
-/** 海報文案 input (v1 `PosterCopyRequest`). */
-export type PosterRequest = { title: string; time: string; place: string; notes: string | null };
-/** 海報文案 output (v1 `PosterCopyResponse`): text only, never an image. */
-export type PosterCopy = { title: string; time_place: string; slogan: string; body: string };
+/**
+ * 海報 data access. A 海報 belongs to one 預約 (one each; 再貼 overwrites) and goes
+ * away with it. Only 活動名稱 and 內文 are the student's; 日期、時段、教室 always
+ * come from the 預約's 可借格.
+ */
 
-const INVALID = "海報資料不完整：title、time、place 必須是非空字串，notes 可省略";
+/** What the student's Agent sends (`WritePosterRequest`). */
+export type PosterInput = { title: string; body: string };
 
-/** Validates a parsed JSON body; anything else (including a non-JSON body → null) → 400 INVALID_POSTER. */
-export function parsePosterRequest(body: unknown): PosterRequest {
+/** A 海報 as write_poster answers it (`Poster`). */
+export type Poster = PosterInput & {
+  booking_id: string;
+  date: string;
+  start: string;
+  end: string;
+  room: string;
+};
+
+/**
+ * The one place a 海報 is checked before it is saved: a parsed JSON body (non-JSON → null)
+ * must be `{ title: string, body: string }`, else 400 INVALID_REQUEST.
+ */
+export function parsePoster(body: unknown): PosterInput {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    throw new ApiError(400, "INVALID_POSTER", INVALID);
+    throw new ApiError(400, "INVALID_REQUEST", "請求內容必須是 JSON，包含文字欄位 title 與 body");
   }
-  const { title, time, place, notes } = body as Record<string, unknown>;
-  const filled = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
-  if (!filled(title) || !filled(time) || !filled(place)) throw new ApiError(400, "INVALID_POSTER", INVALID);
-  if (notes !== undefined && notes !== null && typeof notes !== "string") {
-    throw new ApiError(400, "INVALID_POSTER", INVALID);
+  const { title, body: text } = body as Record<string, unknown>;
+  if (typeof title !== "string" || typeof text !== "string") {
+    throw new ApiError(400, "INVALID_REQUEST", "請求內容必須包含文字欄位 title（活動名稱）與 body（內文）");
   }
-  return { title, time, place, notes: notes ?? null };
+  return { title, body: text };
 }
 
-/** Deterministic template, same wording as v1 `/poster/copy`. */
-export function writePosterCopy({ title, time, place, notes }: PosterRequest): PosterCopy {
-  const extra = notes?.trim() ? `備註：${notes.trim()}` : "";
-  return {
-    title,
-    time_place: `${time} @ ${place}`,
-    slogan: `一起來！${title}`,
-    body: `歡迎參加「${title}」！時間地點：${time}，${place}。${extra}`,
-  };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Pins a 海報 on a student's own 預約 in a 堂課, replacing any earlier one.
+ * Throws 404 NOT_FOUND (no such 預約 in this 堂課) / 403 NOT_OWNER.
+ */
+export async function writePoster(
+  db: Db,
+  input: {
+    sessionId: string;
+    bookingId: string;
+    studentId: number;
+    poster: PosterInput;
+    now: Date;
+    /** Called with the 預約's slot_id once found (before the owner check). */
+    onFound?: (slotId: string) => void;
+  },
+): Promise<Poster> {
+  const notFound = new ApiError(404, "NOT_FOUND", "找不到這筆預約");
+  if (!UUID.test(input.bookingId)) throw notFound;
+  return db.transaction(async (tx) => {
+    // FOR SHARE: a concurrent 取消 waits for the 海報 (then deletes it with the 預約) or goes first (we see no 預約).
+    const [booking] = await tx.query<{
+      slot_id: string;
+      student_id: number;
+      date: string;
+      start_time: string;
+      end_time: string;
+      room: string;
+    }>(
+      `SELECT b.slot_id, b.student_id, s.date, s.start_time, s.end_time, s.room
+         FROM bookings b
+         JOIN slots s ON s.session_id = b.session_id AND s.slot_id = b.slot_id
+        WHERE b.id = $1 AND b.session_id = $2
+          FOR SHARE OF b`,
+      [input.bookingId, input.sessionId],
+    );
+    if (!booking) throw notFound;
+    input.onFound?.(booking.slot_id);
+    if (booking.student_id !== input.studentId) {
+      throw new ApiError(403, "NOT_OWNER", "只能替自己的預約貼海報");
+    }
+    await tx.query(
+      `INSERT INTO posters (booking_id, title, body, updated_at) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (booking_id) DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body, updated_at = EXCLUDED.updated_at`,
+      [input.bookingId, input.poster.title, input.poster.body, input.now],
+    );
+    return {
+      booking_id: input.bookingId,
+      title: input.poster.title,
+      body: input.poster.body,
+      date: booking.date,
+      start: booking.start_time,
+      end: booking.end_time,
+      room: booking.room,
+    };
+  });
 }

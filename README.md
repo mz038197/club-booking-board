@@ -48,7 +48,7 @@ Agent 呼叫 `/api/v1`（`Authorization: Bearer <課堂金鑰>`）：
 | POST | `/api/v1/bookings` | 預約一格 |
 | GET | `/api/v1/bookings` | 查自己的預約 |
 | DELETE | `/api/v1/bookings/{id}` | 取消自己的預約 |
-| POST | `/api/v1/poster/copy` | 海報文案 |
+| POST | `/api/v1/bookings/{id}/poster` | 把海報貼到自己的預約上（`write_poster`） |
 
 完整規格（給 Agent Builder 匯入）：`/api/v1/openapi.json`。
 

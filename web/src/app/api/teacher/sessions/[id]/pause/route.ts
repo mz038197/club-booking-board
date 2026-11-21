@@ -4,7 +4,7 @@ import { setPaused } from "@/server/sessions";
 
 export const dynamic = "force-dynamic";
 
-/** 暫停／恢復：`{ paused: boolean }`. 暫停只擋學生的預約與取消，查詢照常. */
+/** 暫停／恢復：`{ paused: boolean }`. 暫停只擋學生的預約、取消與貼海報，查詢照常. */
 export const PUT = sessionRoute(async (args) => {
   const { req, deps, session } = args;
   const { paused } = await jsonBody(req);
@@ -16,7 +16,7 @@ export const PUT = sessionRoute(async (args) => {
     args,
     session.id,
     "setPaused",
-    paused ? "已暫停預約：學生 Agent 預約／取消會收到 403 BOOKING_CLOSED，查詢照常" : "已恢復預約",
+    paused ? "已暫停預約：學生 Agent 預約／取消／貼海報會收到 403 BOOKING_CLOSED，查詢照常" : "已恢復預約",
   );
   return Response.json({ paused });
 });

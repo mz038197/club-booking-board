@@ -9,9 +9,16 @@ export type SlotSpec = {
   room: string;
 };
 
-/** One 可借格 of a 看板, as the API sends it; `booked_by` = 顯示名稱 (maybe masked). */
+/** A 海報 as a 看板 shows it; its 日期、時段、教室 are its 可借格's. */
+export type BoardPoster = { title: string; body: string };
+
+/**
+ * One 可借格 of a 看板, as the API sends it; `booked_by` = 顯示名稱 (maybe masked);
+ * `poster` only on teacher views, for a 預約 with a 海報.
+ */
 export type BoardSlot = SlotSpec & {
   slot_id: string;
   status: SlotStatus;
   booked_by?: string;
+  poster?: BoardPoster;
 };

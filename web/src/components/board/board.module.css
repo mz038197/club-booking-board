@@ -339,6 +339,33 @@
   color: var(--surface);
   font-size: 20px;
 }
+/* 海報 on a 已借 cell (日展開): title + body clamped; the full text is in the cell's tooltip */
+.poster {
+  display: grid;
+  gap: 2px;
+  max-width: 220px;
+  margin: 6px auto 0;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.posterTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chip);
+}
+.posterBody {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+}
 .flash {
   animation: pop 1.2s ease-out;
 }

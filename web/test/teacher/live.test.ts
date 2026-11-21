@@ -255,7 +255,7 @@ describe("GET /api/teacher/sessions/:id/admin-log — 教師操作紀錄", () =>
     const messages = (await get("/admin-log")).entries.slice(0, 3).map((e: { message: string }) => e.message);
     expect(messages).toEqual([
       "已恢復預約",
-      "已暫停預約：學生 Agent 預約／取消會收到 403 BOOKING_CLOSED，查詢照常",
+      "已暫停預約：學生 Agent 預約／取消／貼海報會收到 403 BOOKING_CLOSED，查詢照常",
       "規則：每人最多 2 格",
     ]);
   });

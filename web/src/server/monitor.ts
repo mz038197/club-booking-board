@@ -32,7 +32,7 @@ export async function setDisplaySettings(
  */
 export async function monitorSnapshot(db: Db, session: Session): Promise<MonitorSnapshot> {
   const name = session.maskNames ? maskDisplayName : (n: string) => n;
-  const slots = await boardOf(db, session.id);
+  const slots = await boardOf(db, session.id, { withPosters: true });
   const roster = await rosterProgressOf(db, session.id);
   const calls = await recentCallsOf(db, session.id);
   return {

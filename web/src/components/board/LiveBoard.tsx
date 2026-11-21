@@ -400,6 +400,12 @@ function DayMatrix({
                     style={chip(r)}
                   >
                     {x.status === "open" ? "可借" : x.booked_by}
+                    {x.poster ? (
+                      <div className={s.poster} title={`${x.poster.title}\n\n${x.poster.body}`}>
+                        <strong className={s.posterTitle}>{x.poster.title}</strong>
+                        <span className={s.posterBody}>{x.poster.body}</span>
+                      </div>
+                    ) : null}
                     {isNew ? <span className={s.newBadge}>剛預約！</span> : null}
                   </td>
                 );

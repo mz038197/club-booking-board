@@ -173,6 +173,15 @@ describe("dayExpandSlots", () => {
     ]);
   });
 
+  it("carries a booked slot’s 海報", () => {
+    const poster = { title: "吉他社迎新", body: "歡迎大家來吉他社玩" };
+    const withPoster: BoardSlot[] = [{ ...slots[1], poster }];
+
+    expect(dayExpandSlots(withPoster, "2026-09-25")).toEqual([
+      { start: "13:00", end: "15:00", room: "302", status: "booked", booked_by: "第三組", poster },
+    ]);
+  });
+
   it("returns an empty list for a day with no slots", () => {
     expect(dayExpandSlots(slots, "2026-09-01")).toEqual([]);
   });

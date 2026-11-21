@@ -206,8 +206,15 @@ export async function currentSessionOf(db: Db, classId: number): Promise<Session
   return row ? toSession(row) : null;
 }
 
-/** 看板: every 可借格 of a 堂課 with its booking state and the booker's 顯示名稱. */
-export async function boardOf(db: Db, sessionId: string): Promise<BoardSlot[]> {
+/**
+ * 看板: every 可借格 of a 堂課 with its booking state and the booker's 顯示名稱.
+ * `withPosters` adds each 預約's 海報 (teacher views; the student's listSlots never carries them).
+ */
+export async function boardOf(
+  db: Db,
+  sessionId: string,
+  options: { withPosters?: boolean } = {},
+): Promise<BoardSlot[]> {
   const rows = await db.query<{
     slot_id: string;
     date: string;
@@ -216,12 +223,16 @@ export async function boardOf(db: Db, sessionId: string): Promise<BoardSlot[]> {
     room: string;
     display_name: string | null;
     booked: boolean;
+    poster_title: string | null;
+    poster_body: string | null;
   }>(
     `SELECT s.slot_id, s.date, s.start_time, s.end_time, s.room,
-            st.display_name, (b.id IS NOT NULL) AS booked
+            st.display_name, (b.id IS NOT NULL) AS booked,
+            p.title AS poster_title, p.body AS poster_body
        FROM slots s
        LEFT JOIN bookings b ON b.session_id = s.session_id AND b.slot_id = s.slot_id
        LEFT JOIN students st ON st.student_id = b.student_id
+       LEFT JOIN posters p ON p.booking_id = b.id
       WHERE s.session_id = $1
       ORDER BY s.date, s.start_time, s.room`,
     [sessionId],
@@ -234,5 +245,8 @@ export async function boardOf(db: Db, sessionId: string): Promise<BoardSlot[]> {
     room: r.room,
     status: r.booked ? "booked" : "open",
     ...(r.booked ? { booked_by: r.display_name ?? "" } : {}),
+    ...(options.withPosters && r.poster_title !== null
+      ? { poster: { title: r.poster_title, body: r.poster_body ?? "" } }
+      : {}),
   }));
 }

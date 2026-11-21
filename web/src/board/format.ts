@@ -5,7 +5,7 @@ const ACTION_REQUESTS: Record<string, string> = {
   listMyBookings: "GET /bookings",
   bookSlot: "POST /bookings",
   cancelBooking: "DELETE /bookings/{id}",
-  writePosterCopy: "POST /poster-copy",
+  writePoster: "POST /bookings/{id}/poster",
 };
 
 const CODE_NOTES: Record<string, string> = {
@@ -16,7 +16,7 @@ const CODE_NOTES: Record<string, string> = {
   NOT_OWNER: "不是自己的預約",
   NOT_FOUND: "找不到預約",
   INVALID_REQUEST: "請求格式錯誤",
-  INVALID_POSTER: "文案資料不完整",
+  INVALID_POSTER: "海報不合格",
   INTERNAL_ERROR: "伺服器錯誤",
 };
 

@@ -1,4 +1,4 @@
-import type { BoardSlot, SlotStatus } from "./types";
+import type { BoardPoster, BoardSlot, SlotStatus } from "./types";
 import { compareRooms } from "./groupSlots";
 
 export type YearMonth = {
@@ -32,6 +32,7 @@ export type DayExpandSlot = {
   room: string;
   status: SlotStatus;
   booked_by?: string;
+  poster?: BoardPoster;
 };
 
 const CHIP_VISIBLE_MAX = 4;
@@ -129,6 +130,7 @@ export function dayExpandSlots(slots: BoardSlot[], date: string): DayExpandSlot[
     room: slot.room,
     status: slot.status,
     booked_by: slot.booked_by,
+    ...(slot.poster ? { poster: slot.poster } : {}),
   }));
 }
 

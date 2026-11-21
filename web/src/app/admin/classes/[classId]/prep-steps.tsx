@@ -42,18 +42,10 @@ export function prepSteps(ctx: SessionContext): PrepStepView[] {
     {
       key: "rules",
       title: "預約規則",
-      // The defaults (每人 1 格, 不限時間) are valid rules, so this step is always ready.
+      // The default (每人 1 格) is a valid rule, so this step is always ready.
       done: true,
-      hint: `每人 ${ctx.session.perStudentLimit} 格・${
-        ctx.session.bookingWindow ? `${ctx.session.bookingWindow.start}–${ctx.session.bookingWindow.end}` : "不限時間"
-      }`,
-      body: (
-        <RulesStep
-          sessionId={ctx.session.id}
-          perStudentLimit={ctx.session.perStudentLimit}
-          bookingWindow={ctx.session.bookingWindow}
-        />
-      ),
+      hint: `每人 ${ctx.session.perStudentLimit} 格`,
+      body: <RulesStep sessionId={ctx.session.id} perStudentLimit={ctx.session.perStudentLimit} />,
     },
     {
       key: "agent-builder",

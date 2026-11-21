@@ -73,7 +73,8 @@ export function studentOpenApi(apiBaseUrl: string) {
         get: {
           operationId: "listMyBookings",
           summary: "列出我在目前堂課的預約",
-          description: "只回傳呼叫者自己的預約。要取消預約時，從這裡取得 booking_id。",
+          description:
+            "只回傳呼叫者自己的預約，每筆附上已貼的海報（沒貼時 poster 為 null）。要取消預約或貼海報時，從這裡取得 booking_id。",
           responses: {
             "200": { description: "目前堂課與我的預約", content: json("MyBookings") },
             ...commonErrors,
@@ -250,8 +251,30 @@ export function studentOpenApi(apiBaseUrl: string) {
           required: ["session", "bookings"],
           properties: {
             session: { description: "目前堂課", allOf: [{ $ref: "#/components/schemas/Session" }] },
-            bookings: { type: "array", description: "我在目前堂課的預約", items: { $ref: "#/components/schemas/Booking" } },
+            bookings: { type: "array", description: "我在目前堂課的預約", items: { $ref: "#/components/schemas/MyBooking" } },
           },
+        },
+        MyBooking: {
+          description: "我的一筆預約，附上它的海報",
+          allOf: [
+            { $ref: "#/components/schemas/Booking" },
+            {
+              type: "object",
+              required: ["poster"],
+              properties: {
+                poster: {
+                  type: "object",
+                  nullable: true,
+                  description: "這筆預約上已貼的海報；還沒貼時為 null。日期、時段、教室就是這筆預約的",
+                  required: ["title", "body"],
+                  properties: {
+                    title: { type: "string", description: "活動名稱" },
+                    body: { type: "string", description: "海報內文" },
+                  },
+                },
+              },
+            },
+          ],
         },
         BookSlotRequest: {
           type: "object",

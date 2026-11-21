@@ -1,3 +1,4 @@
+import type { BoardPoster } from "@/board/types";
 import type { Db } from "./db";
 import { isoOf, type RowTime } from "./db/rows";
 import { ApiError } from "./http/errors";
@@ -177,15 +178,23 @@ export async function forceCancelBooking(
   return { slotId: row.slot_id, studentId: row.student_id, displayName: row.display_name };
 }
 
-/** 我的預約: a student's 預約 in a 堂課, in board order. */
-export async function bookingsOf(db: Db, sessionId: string, studentId: number): Promise<Booking[]> {
-  const rows = await db.query<BookingRow>(
-    `SELECT b.id, b.slot_id, s.date, s.start_time, s.end_time, s.room, b.created_at
+/** One of 我的預約: the 預約 plus its 海報 (null when none is pinned). */
+export type MyBooking = Booking & { poster: BoardPoster | null };
+
+/** 我的預約: a student's 預約 in a 堂課, in board order, each with its 海報. */
+export async function bookingsOf(db: Db, sessionId: string, studentId: number): Promise<MyBooking[]> {
+  const rows = await db.query<BookingRow & { poster_title: string | null; poster_body: string | null }>(
+    `SELECT b.id, b.slot_id, s.date, s.start_time, s.end_time, s.room, b.created_at,
+            p.title AS poster_title, p.body AS poster_body
        FROM bookings b
        JOIN slots s ON s.session_id = b.session_id AND s.slot_id = b.slot_id
+       LEFT JOIN posters p ON p.booking_id = b.id
       WHERE b.session_id = $1 AND b.student_id = $2
       ORDER BY s.date, s.start_time, s.room`,
     [sessionId, studentId],
   );
-  return rows.map(toBooking);
+  return rows.map((r) => ({
+    ...toBooking(r),
+    poster: r.poster_title === null ? null : { title: r.poster_title, body: r.poster_body ?? "" },
+  }));
 }

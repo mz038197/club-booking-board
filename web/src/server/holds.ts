@@ -1,25 +1,22 @@
 import type { Db } from "./db";
 import { ApiError } from "./http/errors";
-import { MAX_HOLD_NAME_LENGTH } from "@/board/cell-dialog";
+import { DEFAULT_HOLD_NAME, holdNameError } from "@/board/hold-name";
+
+export { DEFAULT_HOLD_NAME };
 
 /**
  * 教師保留 (ADR 0006): a teacher's setting on a 可借格. Students and agents see the
  * 可借格 as 已借 with the 保留 name as the booker; it is not a 預約 (no 每人上限, no 海報).
  */
 
-/** What students see as the booker when the teacher gave no name. */
-export const DEFAULT_HOLD_NAME = "保留";
-
 /** Validates the optional 保留 name; blank → null (shown as 「保留」). 400 INVALID_REQUEST otherwise. */
 export function parseHoldName(body: Record<string, unknown>): string | null {
   const { name } = body;
   if (name === undefined || name === null) return null;
   if (typeof name !== "string") throw new ApiError(400, "INVALID_REQUEST", "保留名字必須是文字");
-  const trimmed = name.trim();
-  if ([...trimmed].length > MAX_HOLD_NAME_LENGTH) {
-    throw new ApiError(400, "INVALID_REQUEST", `保留名字最多 ${MAX_HOLD_NAME_LENGTH} 字`);
-  }
-  return trimmed || null;
+  const error = holdNameError(name);
+  if (error) throw new ApiError(400, "INVALID_REQUEST", error);
+  return name.trim() || null;
 }
 
 /**

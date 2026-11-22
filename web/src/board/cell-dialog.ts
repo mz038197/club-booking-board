@@ -1,13 +1,14 @@
 /**
  * What the 日展開's in-page dialog asks before a teacher cell action (設保留、解除保留、
- * 刪除海報). Shared by the client dialog and the server's 保留 name rule.
+ * 刪除海報), as plain data the dialog component renders.
  */
 
+import { DEFAULT_HOLD_NAME } from "./hold-name";
 import type { BoardSlot } from "./types";
 
 export type CellAction = "setHold" | "releaseHold" | "deletePoster";
 
-export type CellDialog = {
+export type CellDialogContent = {
   action: CellAction;
   title: string;
   message: string;
@@ -22,7 +23,7 @@ export type CellDialog = {
  * The dialog for a 日展開 cell's teacher action: 設保留 on an open 可借格, 解除保留 on a
  * held one, 刪除海報 on a 預約 with a 海報. Null when the cell has no action.
  */
-export function cellDialogFor(slot: BoardSlot): CellDialog | null {
+export function cellDialogFor(slot: BoardSlot): CellDialogContent | null {
   const where = `${slot.room} ${slot.start}–${slot.end}`;
   if (slot.held) {
     return {
@@ -38,7 +39,7 @@ export function cellDialogFor(slot: BoardSlot): CellDialog | null {
       action: "setHold",
       title: `保留 ${where}`,
       message: "學生與 Agent 會看到這一格已借。",
-      nameField: { label: "學生看到的名字（選填）", placeholder: "保留" },
+      nameField: { label: `學生看到的名字（選填，空白顯示「${DEFAULT_HOLD_NAME}」）`, placeholder: DEFAULT_HOLD_NAME },
       confirmLabel: "設保留",
       danger: false,
     };
@@ -53,12 +54,4 @@ export function cellDialogFor(slot: BoardSlot): CellDialog | null {
     };
   }
   return null;
-}
-
-/** 教師保留 name limit, counted in Unicode code points after trimming. */
-export const MAX_HOLD_NAME_LENGTH = 20;
-
-/** Why a 保留 name can't be sent, or null when it can (blank → shown as 「保留」). */
-export function holdNameError(name: string): string | null {
-  return [...name.trim()].length > MAX_HOLD_NAME_LENGTH ? `名字最多 ${MAX_HOLD_NAME_LENGTH} 字` : null;
 }

@@ -7,7 +7,7 @@ import { LiveBoard } from "@/components/board/LiveBoard";
 import s from "@/components/board/board.module.css";
 import { LOGIN_REQUIRED_PATH } from "@/auth/login-paths";
 import type { BoardSlot } from "@/board/types";
-import { cellDialogFor, type CellAction, type CellDialog as CellDialogContent } from "@/board/cell-dialog";
+import { cellDialogFor, type CellAction, type CellDialogContent } from "@/board/cell-dialog";
 import { CellDialog } from "@/components/board/CellDialog";
 
 /**

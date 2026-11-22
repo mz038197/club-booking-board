@@ -59,6 +59,41 @@ describe("學生分享連結 — 拿到連結就能看", () => {
     expect(body).not.toHaveProperty("roster");
     expect(body).not.toHaveProperty("calls");
   });
+
+  it("shows each 預約's 海報, while a 教師保留 stays a plain 已借", async () => {
+    app = await setupTestApp();
+    const session = await classWithSession();
+    const booked = await app.request("POST", "/api/v1/bookings", { key: FAKE_KEYS.studentA, body: { slot_id: SLOT_301 } });
+    const { booking_id } = await booked.json();
+    const poster = { title: "吉他社迎新", body: "歡迎大家來吉他社玩，自備撥片，現場有老師帶大家彈第一首歌！" };
+    const written = await app.request("POST", `/api/v1/bookings/${booking_id}/poster`, {
+      key: FAKE_KEYS.studentA,
+      body: poster,
+    });
+    expect(written.status).toBe(200);
+    const SLOT_302 = "2026-12-16_12:10-13:00_302";
+    const hold = await app.request("PUT", `/api/teacher/sessions/${session.id}/slots/${SLOT_302}/hold`, {
+      cookies: teacherCookie(app, teacher),
+      body: { name: "社團博覽會" },
+    });
+    expect(hold.status).toBeLessThan(300);
+
+    const link = await generate(session.id);
+    const res = await app.request("GET", `/api/share/${link.token}`);
+
+    const slots = (await res.json()).slots as Record<string, unknown>[];
+    expect(slots.find((s) => s.slot_id === SLOT_301)).toMatchObject({ status: "booked", poster });
+    const held = slots.find((s) => s.slot_id === SLOT_302);
+    expect(held).toEqual({
+      slot_id: SLOT_302,
+      date: "2026-12-16",
+      start: "12:10",
+      end: "13:00",
+      room: "302",
+      status: "booked",
+      booked_by: "社團博覽會",
+    });
+  });
 });
 
 describe("學生分享連結 — 失效", () => {

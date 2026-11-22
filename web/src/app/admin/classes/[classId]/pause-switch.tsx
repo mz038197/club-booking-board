@@ -81,7 +81,7 @@ export function PauseSwitch({ sessionId, paused }: { sessionId: string; paused: 
           <span style={{ fontSize: 13, color: "var(--subtle-fg)" }}>
             {running
               ? "跟著學生金鑰時效；按一下緊急暫停"
-              : "學生預約／取消收到 BOOKING_CLOSED（查詢照常）；按一下恢復"}
+              : "學生預約／取消／貼海報收到 BOOKING_CLOSED（查詢照常）；按一下恢復"}
           </span>
         </span>
       </button>

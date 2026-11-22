@@ -1,6 +1,9 @@
+import type { BoardSlot } from "@/board/types";
 import type { Db } from "./db";
 import { isoOf, type RowTime } from "./db/rows";
+import { DEFAULT_HOLD_NAME } from "./holds";
 import { ApiError } from "./http/errors";
+import { posterOf, type PosterCols } from "./poster";
 
 /** 堂課 / 目前堂課 / 可借格 data access. */
 
@@ -11,27 +14,16 @@ export type Session = {
   paused: boolean;
   /** 預約規則: 每人上限 (1–5) */
   perStudentLimit: number;
-  /** 預約規則: 上課當天可預約與取消的時間窗 (Asia/Taipei HH:MM, start inclusive, end exclusive); null = 不限 */
-  bookingWindow: BookingWindow | null;
   /** 投影顯示設定: 遮蔽名稱 (投影監看頁 only; never the 分享連結 or the student API) */
   maskNames: boolean;
   /** 投影顯示設定: default of 「有人預約時自動跳到那一天」 */
   autoFollow: boolean;
 };
 
-export type BookingWindow = { start: string; end: string };
-
 export type SlotInput = { date: string; start: string; end: string; room: string };
 
-export type BoardSlot = {
-  slot_id: string;
-  date: string;
-  start: string;
-  end: string;
-  room: string;
-  status: "open" | "booked";
-  booked_by?: string;
-};
+/** One 可借格 of a 看板 — the same shape the browser renders. */
+export type { BoardSlot };
 
 export function makeSlotId(slot: SlotInput): string {
   return `${slot.date}_${slot.start}-${slot.end}_${slot.room}`;
@@ -43,8 +35,6 @@ type SessionRow = {
   name: string;
   paused: boolean;
   per_student_limit: number;
-  booking_window_start: string | null;
-  booking_window_end: string | null;
   mask_names: boolean;
   auto_follow: boolean;
 };
@@ -57,8 +47,6 @@ export const sessionCols = (alias = "") =>
     "name",
     "paused",
     "per_student_limit",
-    "booking_window_start",
-    "booking_window_end",
     "mask_names",
     "auto_follow",
   ]
@@ -71,10 +59,6 @@ export const toSession = (r: SessionRow): Session => ({
   name: r.name,
   paused: r.paused,
   perStudentLimit: r.per_student_limit,
-  bookingWindow:
-    r.booking_window_start && r.booking_window_end
-      ? { start: r.booking_window_start, end: r.booking_window_end }
-      : null,
   maskNames: r.mask_names,
   autoFollow: r.auto_follow,
 });
@@ -85,7 +69,7 @@ export type { SessionRow };
  * 預約規則 columns a new 堂課 copies from the 堂課 it is based on (可借清單 is copied
  * separately; 預約 never; 暫停 never). Add new rule columns here.
  */
-export const COPIED_RULE_COLUMNS = ["per_student_limit", "booking_window_start", "booking_window_end"] as const;
+export const COPIED_RULE_COLUMNS = ["per_student_limit"] as const;
 
 /**
  * Creates a 堂課; it becomes its class's 目前堂課. With `copyFrom` (a 堂課 of the
@@ -142,16 +126,13 @@ export async function setPaused(db: Db, sessionId: string, paused: boolean): Pro
   await db.query(`UPDATE sessions SET paused = $2 WHERE id = $1`, [sessionId, paused]);
 }
 
-/** Sets a 堂課's 預約規則 (每人上限 1–5, 時間窗 or null). Validate first (`parseBookingRules`). */
+/** Sets a 堂課's 預約規則 (每人上限 1–5). Validate first (`parseBookingRules`). */
 export async function setBookingRules(
   db: Db,
   sessionId: string,
-  rules: { perStudentLimit: number; bookingWindow: BookingWindow | null },
+  rules: { perStudentLimit: number },
 ): Promise<void> {
-  await db.query(
-    `UPDATE sessions SET per_student_limit = $2, booking_window_start = $3, booking_window_end = $4 WHERE id = $1`,
-    [sessionId, rules.perStudentLimit, rules.bookingWindow?.start ?? null, rules.bookingWindow?.end ?? null],
-  );
+  await db.query(`UPDATE sessions SET per_student_limit = $2 WHERE id = $1`, [sessionId, rules.perStudentLimit]);
 }
 
 export async function sessionById(db: Db, id: string): Promise<Session | null> {
@@ -221,33 +202,57 @@ export async function currentSessionOf(db: Db, classId: number): Promise<Session
   return row ? toSession(row) : null;
 }
 
-/** 看板: every 可借格 of a 堂課 with its booking state and the booker's 顯示名稱. */
-export async function boardOf(db: Db, sessionId: string): Promise<BoardSlot[]> {
-  const rows = await db.query<{
-    slot_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    room: string;
-    display_name: string | null;
-    booked: boolean;
-  }>(
+/**
+ * 看板: every 可借格 of a 堂課 with its booking state and the booker's 顯示名稱.
+ * A 教師保留 is 已借 with the 保留 name as the booker (ADR 0006); only with
+ * `teacherView` is it marked `held: true`, so students and agents never see a third state.
+ * `withPosters` adds each 預約's 海報 (teacher monitor and 分享連結; the student's listSlots never carries them).
+ */
+export async function boardOf(
+  db: Db,
+  sessionId: string,
+  { teacherView = false, withPosters = false }: { teacherView?: boolean; withPosters?: boolean } = {},
+): Promise<BoardSlot[]> {
+  const rows = await db.query<
+    PosterCols & {
+      slot_id: string;
+      date: string;
+      start_time: string;
+      end_time: string;
+      room: string;
+      display_name: string | null;
+      booked: boolean;
+      held: boolean;
+      hold_name: string | null;
+    }
+  >(
     `SELECT s.slot_id, s.date, s.start_time, s.end_time, s.room,
-            st.display_name, (b.id IS NOT NULL) AS booked
+            st.display_name, (b.id IS NOT NULL) AS booked,
+            (h.slot_id IS NOT NULL) AS held, h.name AS hold_name,
+            p.title AS poster_title, p.body AS poster_body
        FROM slots s
        LEFT JOIN bookings b ON b.session_id = s.session_id AND b.slot_id = s.slot_id
        LEFT JOIN students st ON st.student_id = b.student_id
+       LEFT JOIN slot_holds h ON h.session_id = s.session_id AND h.slot_id = s.slot_id
+       LEFT JOIN posters p ON p.booking_id = b.id
       WHERE s.session_id = $1
       ORDER BY s.date, s.start_time, s.room`,
     [sessionId],
   );
-  return rows.map((r) => ({
-    slot_id: r.slot_id,
-    date: r.date,
-    start: r.start_time,
-    end: r.end_time,
-    room: r.room,
-    status: r.booked ? "booked" : "open",
-    ...(r.booked ? { booked_by: r.display_name ?? "" } : {}),
-  }));
+  return rows.map((r) => {
+    const base = { slot_id: r.slot_id, date: r.date, start: r.start_time, end: r.end_time, room: r.room };
+    if (r.booked) {
+      const poster = withPosters ? posterOf(r) : null;
+      return { ...base, status: "booked", booked_by: r.display_name ?? "", ...(poster ? { poster } : {}) };
+    }
+    if (r.held) {
+      return {
+        ...base,
+        status: "booked",
+        booked_by: r.hold_name ?? DEFAULT_HOLD_NAME,
+        ...(teacherView ? { held: true as const } : {}),
+      };
+    }
+    return { ...base, status: "open" };
+  });
 }

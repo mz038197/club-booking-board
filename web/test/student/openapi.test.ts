@@ -111,7 +111,7 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
       "GET /bookings listMyBookings",
       "GET /slots listSlots",
       "POST /bookings bookSlot",
-      "POST /poster/copy writePosterCopy",
+      "POST /bookings/{id}/poster writePoster",
     ]);
     expect(
       operations(doc)
@@ -124,7 +124,7 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
     const doc = await fetchDoc();
     const session = await createSession(app.db, { classId: 56, name: "12/09" });
     // studentA books twice (setup + bookSlot's example), so allow 2 per student.
-    await setBookingRules(app.db, session.id, { perStudentLimit: 2, bookingWindow: null });
+    await setBookingRules(app.db, session.id, { perStudentLimit: 2 });
     await addSlots(app.db, session.id, [
       { date: "2026-12-09", start: "13:00", end: "14:00", room: "A101" },
       { date: "2026-12-09", start: "13:00", end: "14:00", room: "A102" },
@@ -135,7 +135,9 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
     });
     const bookingId = ((await other.json()) as { booking_id: string }).booking_id;
 
-    for (const { path, method, op } of operations(doc)) {
+    // cancelBooking last: the operations before it (writePoster) need the 預約 to still exist.
+    const ordered = operations(doc).sort((a, b) => Number(a.method === "DELETE") - Number(b.method === "DELETE"));
+    for (const { path, method, op } of ordered) {
       const example = op.requestBody?.content["application/json"].example;
       const res = await app.request(method, "/api/v1" + path.replace("{id}", bookingId), {
         key: FAKE_KEYS.studentA,
@@ -145,6 +147,34 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
       const calls = await apiCallsOf(app.db, session.id);
       expect(calls.at(-1)?.action, `${method} ${path}`).toBe(op.operationId);
     }
+  });
+
+  it("tells the Agent that writePoster takes 日期、時段、教室 from the 預約 and is blocked by 暫停", async () => {
+    const doc = await fetchDoc();
+
+    const op = doc.paths["/bookings/{id}/poster"].post;
+    expect(op.description).toMatch(/日期、時段、教室/);
+    expect(op.description).toContain("暫停");
+    expect(JSON.stringify(doc)).not.toMatch(/poster\/copy|PosterCopy|slogan/);
+  });
+
+  it("tells the Agent the 海報合格規則 before it writes: 字數, 禁用字, and the 400 INVALID_POSTER answer", async () => {
+    const doc = await fetchDoc();
+
+    const op = doc.paths["/bookings/{id}/poster"].post;
+    expect(op.description).toMatch(/20.*500 字/);
+    expect(op.description).toContain("保證錄取");
+    expect(op.description).toContain("INVALID_POSTER");
+    expect(JSON.stringify(op.responses["400"])).toContain("INVALID_POSTER");
+  });
+
+  it("warns the Agent that a composite emoji may count as several 字 (字數 is Unicode characters)", async () => {
+    const doc = await fetchDoc();
+
+    const op = doc.paths["/bookings/{id}/poster"].post;
+    expect(op.description).toContain("Unicode");
+    expect(op.description).toMatch(/組合.*emoji.*多個字/);
+    expect(op.description).not.toMatch(/emoji 都各算 1 字/);
   });
 
   it("declares Bearer auth for every operation", async () => {
@@ -175,6 +205,13 @@ describe("GET /api/v1/openapi.json — 學生專用 OpenAPI", () => {
         "INTERNAL_ERROR",
       ].sort(),
     );
+  });
+
+  it("explains BOOKING_CLOSED by 沒有堂課 and 暫停 only, never a time of day", async () => {
+    const text = JSON.stringify(await fetchDoc());
+
+    expect(text).toContain("暫停");
+    expect(text).not.toMatch(/開放時間|時間窗|可預約時間/);
   });
 
   it("describes every operation, parameter and field in Chinese", async () => {

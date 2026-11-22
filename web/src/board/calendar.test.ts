@@ -147,29 +147,29 @@ describe("visibleRoomChips", () => {
 });
 
 describe("dayExpandSlots", () => {
-  it("lists that day’s slots with time, room, status, and booked_by", () => {
-    expect(dayExpandSlots(slots, "2026-09-25")).toEqual([
-      {
-        start: "13:00",
-        end: "15:00",
-        room: "301",
-        status: "open",
-        booked_by: undefined,
-      },
-      {
-        start: "13:00",
-        end: "15:00",
-        room: "302",
-        status: "booked",
-        booked_by: "第三組",
-      },
-      {
-        start: "15:10",
-        end: "17:10",
-        room: "301",
-        status: "open",
-        booked_by: undefined,
-      },
+  it("lists that day’s slots in time then room order, with status and booked_by", () => {
+    expect(dayExpandSlots([slots[2], slots[1], slots[0], slots[3]], "2026-09-25")).toEqual([
+      slots[0],
+      slots[1],
+      slots[2],
+    ]);
+    expect(dayExpandSlots(slots, "2026-09-25")[1]).toMatchObject({ room: "302", status: "booked", booked_by: "第三組" });
+  });
+
+  it("carries a booked slot’s 海報", () => {
+    const poster = { title: "吉他社迎新", body: "歡迎大家來吉他社玩" };
+    const withPoster: BoardSlot[] = [{ ...slots[1], poster }];
+
+    expect(dayExpandSlots(withPoster, "2026-09-25")).toEqual([
+      expect.objectContaining({ room: "302", status: "booked", booked_by: "第三組", poster }),
+    ]);
+  });
+
+  it("carries a 教師保留 and the slot_id, so a cell needs no second lookup", () => {
+    const withHold: BoardSlot[] = [{ ...slots[1], held: true }];
+
+    expect(dayExpandSlots(withHold, "2026-09-25")).toEqual([
+      expect.objectContaining({ slot_id: "2026-09-25_13:00-15:00_302", held: true }),
     ]);
   });
 

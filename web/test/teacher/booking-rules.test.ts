@@ -27,43 +27,35 @@ async function detail() {
 }
 
 describe("PUT /api/teacher/sessions/:id/rules", () => {
-  it("starts with 每人上限 1, no 時間窗, not paused", async () => {
-    expect(await detail()).toMatchObject({ per_student_limit: 1, booking_window: null, paused: false });
+  it("starts with 每人上限 1, not paused", async () => {
+    expect(await detail()).toMatchObject({ per_student_limit: 1, paused: false });
   });
 
-  it("saves 每人上限 and 時間窗, shown in the 堂課 detail", async () => {
-    const rules = { per_student_limit: 3, booking_window: { start: "12:30", end: "15:10" } };
-    const res = await app.request("PUT", `/api/teacher/sessions/${sessionId}/rules`, { ...as(), body: rules });
+  it("has only 每人上限: saved, answered and shown in the 堂課 detail", async () => {
+    const res = await app.request("PUT", `/api/teacher/sessions/${sessionId}/rules`, {
+      ...as(),
+      body: { per_student_limit: 3 },
+    });
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(rules);
-    expect(await detail()).toMatchObject(rules);
-  });
-
-  it("clears the 時間窗 with null", async () => {
-    const put = (body: unknown) =>
-      app.request("PUT", `/api/teacher/sessions/${sessionId}/rules`, { ...as(), body });
-    await put({ per_student_limit: 2, booking_window: { start: "12:30", end: "15:10" } });
-    await put({ per_student_limit: 2, booking_window: null });
-
-    expect(await detail()).toMatchObject({ per_student_limit: 2, booking_window: null });
+    expect(await res.json()).toEqual({ per_student_limit: 3 });
+    const session = await detail();
+    expect(session.per_student_limit).toBe(3);
+    expect(session).not.toHaveProperty("booking_window");
   });
 
   it.each([
-    { per_student_limit: 0, booking_window: null },
-    { per_student_limit: 6, booking_window: null },
-    { per_student_limit: 1.5, booking_window: null },
-    { per_student_limit: "2", booking_window: null },
-    { per_student_limit: 2, booking_window: { start: "15:10", end: "12:30" } },
-    { per_student_limit: 2, booking_window: { start: "12:30", end: "12:30" } },
-    { per_student_limit: 2, booking_window: { start: "25:00", end: "26:00" } },
-    { per_student_limit: 2, booking_window: { start: "12:30" } },
+    { per_student_limit: 0 },
+    { per_student_limit: 6 },
+    { per_student_limit: 1.5 },
+    { per_student_limit: "2" },
+    {},
   ])("refuses %j with 400 INVALID_REQUEST and keeps the old rules", async (body) => {
     const res = await app.request("PUT", `/api/teacher/sessions/${sessionId}/rules`, { ...as(), body });
 
     expect(res.status).toBe(400);
     expect((await res.json()).code).toBe("INVALID_REQUEST");
-    expect(await detail()).toMatchObject({ per_student_limit: 1, booking_window: null });
+    expect(await detail()).toMatchObject({ per_student_limit: 1 });
   });
 });
 
@@ -82,7 +74,7 @@ describe("PUT /api/teacher/sessions/:id/pause", () => {
 
 describe("access", () => {
   const calls = [
-    ["rules", { per_student_limit: 2, booking_window: null }],
+    ["rules", { per_student_limit: 2 }],
     ["pause", { paused: true }],
   ] as const;
 

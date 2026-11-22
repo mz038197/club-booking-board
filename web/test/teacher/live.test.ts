@@ -43,7 +43,7 @@ beforeEach(async () => {
   // Students here book more than one 可借格.
   await app.request("PUT", `/api/teacher/sessions/${sessionId}/rules`, {
     ...as(),
-    body: { per_student_limit: 3, booking_window: null },
+    body: { per_student_limit: 3 },
   });
 });
 afterEach(async () => {
@@ -248,15 +248,15 @@ describe("GET /api/teacher/sessions/:id/admin-log — 教師操作紀錄", () =>
   it("records 暫停／恢復 and 預約規則 changes", async () => {
     const put = (path: string, body: unknown) =>
       app.request("PUT", `/api/teacher/sessions/${sessionId}${path}`, { ...as(), body });
-    await put("/rules", { per_student_limit: 2, booking_window: { start: "12:00", end: "13:30" } });
+    await put("/rules", { per_student_limit: 2 });
     await put("/pause", { paused: true });
     await put("/pause", { paused: false });
 
     const messages = (await get("/admin-log")).entries.slice(0, 3).map((e: { message: string }) => e.message);
     expect(messages).toEqual([
       "已恢復預約",
-      "已暫停預約：學生 Agent 預約／取消會收到 403 BOOKING_CLOSED，查詢照常",
-      "規則：每人最多 2 格，12:00–13:30 可預約",
+      "已暫停預約：學生 Agent 預約／取消／貼海報會收到 403 BOOKING_CLOSED，查詢照常",
+      "規則：每人最多 2 格",
     ]);
   });
 
@@ -355,7 +355,7 @@ describe("POST /api/teacher/sessions/:id/reset — 重置堂課", () => {
   });
 
   it("keeps 暫停 and the 預約規則", async () => {
-    const rules = { per_student_limit: 2, booking_window: { start: "12:00", end: "13:30" } };
+    const rules = { per_student_limit: 2 };
     await app.request("PUT", `/api/teacher/sessions/${sessionId}/rules`, { ...as(), body: rules });
     await app.request("PUT", `/api/teacher/sessions/${sessionId}/pause`, { ...as(), body: { paused: true } });
 

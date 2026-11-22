@@ -137,6 +137,7 @@ describe("GET /api/v1/bookings — 我的預約", () => {
           end: "14:00",
           room: "A102",
           booked_at: mine.booked_at,
+          poster: null,
         },
       ],
     });

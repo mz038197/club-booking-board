@@ -1,8 +1,11 @@
+import type { BoardPoster } from "@/board/types";
 import type { Db } from "./db";
 import { isoOf, type RowTime } from "./db/rows";
 import { ApiError } from "./http/errors";
 import { limitReachedMessage } from "./booking-rules";
+import { posterOf, type PosterCols } from "./poster";
 import { recordFirstBooking } from "./students";
+import { isUuid } from "./uuid";
 
 const FOREIGN_KEY_VIOLATION = "23503";
 
@@ -51,11 +54,21 @@ export async function bookSlot(
   return db.transaction(async (tx) => {
     // FOR KEY SHARE: a teacher's 移除 / 覆寫 (which lock the 可借格 FOR UPDATE) either
     // waits for this 預約 (and then sees it 已借) or deletes first (and we see no 可借格).
-    const [slot] = await tx.query<{ date: string; start_time: string; end_time: string; room: string }>(
-      `SELECT date, start_time, end_time, room FROM slots WHERE session_id = $1 AND slot_id = $2 FOR KEY SHARE`,
+    // A 教師保留 is set under FOR UPDATE on the 可借格, so the `held` read here is settled.
+    const [found] = await tx.query<{
+      date: string;
+      start_time: string;
+      end_time: string;
+      room: string;
+      held: boolean;
+    }>(
+      `SELECT s.date, s.start_time, s.end_time, s.room,
+              EXISTS (SELECT 1 FROM slot_holds h WHERE h.session_id = s.session_id AND h.slot_id = s.slot_id) AS held
+         FROM slots s WHERE s.session_id = $1 AND s.slot_id = $2 FOR KEY SHARE OF s`,
       [input.sessionId, input.slotId],
     );
-    if (!slot) throw invalidSlot;
+    if (!found) throw invalidSlot;
+    const { held, ...slot } = found;
 
     // 每人上限: lock the student's 名冊 row so their simultaneous 預約 count one at a time.
     // Count in a separate statement: under READ COMMITTED it then sees 預約 committed while we waited.
@@ -74,6 +87,10 @@ export async function bookSlot(
       throw new ApiError(409, "LIMIT_REACHED", limitReachedMessage(limits.per_student_limit));
     }
 
+    const slotTaken = new ApiError(409, "SLOT_TAKEN", "這個可借格已經被借走了，請換一格");
+    // 教師保留 is 已借 to students (ADR 0006).
+    if (held) throw slotTaken;
+
     let row: { id: string; created_at: RowTime } | undefined;
     try {
       [row] = await tx.query<{ id: string; created_at: RowTime }>(
@@ -87,13 +104,11 @@ export async function bookSlot(
       if ((error as { code?: unknown }).code === FOREIGN_KEY_VIOLATION) throw invalidSlot;
       throw error;
     }
-    if (!row) throw new ApiError(409, "SLOT_TAKEN", "這個可借格已經被借走了，請換一格");
+    if (!row) throw slotTaken;
     await recordFirstBooking(tx, input.sessionId, input.studentId, input.now);
     return toBooking({ ...slot, ...row, slot_id: input.slotId });
   });
 }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Cancels a student's own 預約 in a 堂課; returns its slot_id.
@@ -110,7 +125,7 @@ export async function cancelBooking(
   },
 ): Promise<string> {
   const notFound = new ApiError(404, "NOT_FOUND", "找不到這筆預約");
-  if (!UUID.test(input.bookingId)) throw notFound;
+  if (!isUuid(input.bookingId)) throw notFound;
   return db.transaction(async (tx) => {
     const [row] = await tx.query<{ slot_id: string; student_id: number }>(
       `SELECT slot_id, student_id FROM bookings WHERE id = $1 AND session_id = $2 FOR UPDATE`,
@@ -152,7 +167,7 @@ export async function forceCancelBooking(
   db: Db,
   input: { sessionId: string; bookingId: string },
 ): Promise<{ slotId: string; studentId: number; displayName: string }> {
-  if (!UUID.test(input.bookingId)) throw new ApiError(404, "NOT_FOUND", "找不到這筆預約");
+  if (!isUuid(input.bookingId)) throw new ApiError(404, "NOT_FOUND", "找不到這筆預約");
   const [row] = await db.query<{ slot_id: string; student_id: number; display_name: string }>(
     `DELETE FROM bookings b USING students st
       WHERE b.id = $1 AND b.session_id = $2 AND st.student_id = b.student_id
@@ -163,15 +178,20 @@ export async function forceCancelBooking(
   return { slotId: row.slot_id, studentId: row.student_id, displayName: row.display_name };
 }
 
-/** 我的預約: a student's 預約 in a 堂課, in board order. */
-export async function bookingsOf(db: Db, sessionId: string, studentId: number): Promise<Booking[]> {
-  const rows = await db.query<BookingRow>(
-    `SELECT b.id, b.slot_id, s.date, s.start_time, s.end_time, s.room, b.created_at
+/** One of 我的預約: the 預約 plus its 海報 (null when none is pinned). */
+export type MyBooking = Booking & { poster: BoardPoster | null };
+
+/** 我的預約: a student's 預約 in a 堂課, in board order, each with its 海報. */
+export async function bookingsOf(db: Db, sessionId: string, studentId: number): Promise<MyBooking[]> {
+  const rows = await db.query<BookingRow & PosterCols>(
+    `SELECT b.id, b.slot_id, s.date, s.start_time, s.end_time, s.room, b.created_at,
+            p.title AS poster_title, p.body AS poster_body
        FROM bookings b
        JOIN slots s ON s.session_id = b.session_id AND s.slot_id = b.slot_id
+       LEFT JOIN posters p ON p.booking_id = b.id
       WHERE b.session_id = $1 AND b.student_id = $2
       ORDER BY s.date, s.start_time, s.room`,
     [sessionId, studentId],
   );
-  return rows.map(toBooking);
+  return rows.map((r) => ({ ...toBooking(r), poster: posterOf(r) }));
 }

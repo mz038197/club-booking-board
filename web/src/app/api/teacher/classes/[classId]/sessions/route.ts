@@ -1,6 +1,7 @@
 import { ApiError } from "@/server/http/errors";
-import { classRoute, isUuid, jsonBody, logAction } from "@/server/http/teacher-route";
+import { classRoute, jsonBody, logAction } from "@/server/http/teacher-route";
 import { createSession, sessionsOfClass, type SessionSummary } from "@/server/sessions";
+import { isUuid } from "@/server/uuid";
 
 export const dynamic = "force-dynamic";
 

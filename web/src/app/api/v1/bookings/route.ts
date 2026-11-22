@@ -1,4 +1,4 @@
-import { assertBookingOpen } from "@/server/booking-rules";
+import { assertNotPaused } from "@/server/booking-rules";
 import { bookingsOf, bookSlot } from "@/server/bookings";
 import { ApiError } from "@/server/http/errors";
 import { studentRoute } from "@/server/http/student-route";
@@ -19,7 +19,7 @@ export const POST = studentRoute("bookSlot", async ({ req, deps, student, sessio
   const slotId = await slotIdFrom(req);
   log.slotId = slotId;
   const now = deps.now();
-  assertBookingOpen(session, now);
+  assertNotPaused(session);
   const booking = await bookSlot(deps.db, {
     sessionId: session.id,
     slotId,

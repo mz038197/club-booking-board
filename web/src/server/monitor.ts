@@ -32,13 +32,14 @@ export async function setDisplaySettings(
  */
 export async function monitorSnapshot(db: Db, session: Session): Promise<MonitorSnapshot> {
   const name = session.maskNames ? maskDisplayName : (n: string) => n;
-  const slots = await boardOf(db, session.id);
+  const slots = await boardOf(db, session.id, { teacherView: true, withPosters: true });
   const roster = await rosterProgressOf(db, session.id);
   const calls = await recentCallsOf(db, session.id);
   return {
     session: { id: session.id, name: session.name, class_id: session.classId, paused: session.paused },
     settings: { mask_names: session.maskNames, auto_follow: session.autoFollow },
-    slots: slots.map((s) => (s.booked_by === undefined ? s : { ...s, booked_by: name(s.booked_by) })),
+    // A 保留 name (e.g. 「熱舞社」) is not a student's name: never masked.
+    slots: slots.map((s) => (s.booked_by === undefined || s.held ? s : { ...s, booked_by: name(s.booked_by) })),
     roster: roster.map((r) => ({ ...r, display_name: name(r.display_name) })),
     calls: calls.map((c) => ({ ...c, display_name: name(c.display_name) })),
   };

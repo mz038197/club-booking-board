@@ -2,6 +2,7 @@ import { logAdminAction, type AdminAction } from "../admin-log";
 import type { ClassRef } from "../router-gateway";
 import { getDeps, type Deps } from "../deps";
 import { sessionById, type Session } from "../sessions";
+import { isUuid } from "../uuid";
 import { ApiError, handle } from "./errors";
 import { parseClassId, requireClassAccess, requireTeacher, type TeacherAccess } from "./teacher-auth";
 
@@ -33,9 +34,6 @@ export function classRoute<P extends { classId: string }>(
     return fn({ req, deps, access, cls }, params);
   });
 }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const isUuid = (value: unknown): value is string => typeof value === "string" && UUID.test(value);
 
 /** Loads the 堂課 (404 NOT_FOUND when unknown), then checks its 班級 (403). */
 export function sessionRoute<P extends { id: string }>(

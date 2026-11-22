@@ -6,6 +6,8 @@
  * Served at GET /api/v1/openapi.json and copied from the Agent Builder 設定 card.
  */
 
+import { POSTER_BANNED_WORDS, POSTER_BODY_MAX, POSTER_BODY_MIN } from "./poster";
+
 const SLOT_ID_EXAMPLE = "2026-12-09_13:00-14:00_A101";
 
 /** Every error code a student endpoint can answer with. */
@@ -50,7 +52,7 @@ export function studentOpenApi(apiBaseUrl: string) {
       title: "社團教室預約（學生用）",
       version: "2.0.0",
       description:
-        "讓學生的 Agent 查看社團教室的可借格、預約、取消自己的預約，並寫活動海報文案。" +
+        "讓學生的 Agent 查看社團教室的可借格、預約、取消自己的預約，並把活動海報貼到自己的預約上。" +
         "身分由課堂金鑰決定（Agent Builder 以 OAuth 2.0 使用者授權取得），不需要也不接受學號或堂課代號；" +
         "所有操作都作用在學生所屬班級的「目前堂課」。錯誤一律回傳 { code, message }，message 可直接轉述給學生。",
     },
@@ -73,7 +75,8 @@ export function studentOpenApi(apiBaseUrl: string) {
         get: {
           operationId: "listMyBookings",
           summary: "列出我在目前堂課的預約",
-          description: "只回傳呼叫者自己的預約。要取消預約時，從這裡取得 booking_id。",
+          description:
+            "只回傳呼叫者自己的預約，每筆附上已貼的海報（沒貼時 poster 為 null）。要取消預約或貼海報時，從這裡取得 booking_id。",
           responses: {
             "200": { description: "目前堂課與我的預約", content: json("MyBookings") },
             ...commonErrors,
@@ -84,7 +87,7 @@ export function studentOpenApi(apiBaseUrl: string) {
           summary: "預約一個可借格",
           description:
             "以 slot_id 預約目前堂課的一個可借格。一個可借格只能被一人預約；每人可預約的格數有上限。" +
-            "堂課暫停或不在開放時間內時無法預約（403 BOOKING_CLOSED）。",
+            "堂課暫停時無法預約（403 BOOKING_CLOSED）。",
           requestBody: {
             required: true,
             description: "要預約的可借格",
@@ -111,7 +114,7 @@ export function studentOpenApi(apiBaseUrl: string) {
           operationId: "cancelBooking",
           summary: "取消我的一筆預約",
           description:
-            "以 booking_id 取消自己在目前堂課的預約，只能取消自己的。堂課暫停或不在開放時間內時無法取消（403 BOOKING_CLOSED）。",
+            "以 booking_id 取消自己在目前堂課的預約，只能取消自己的。堂課暫停時無法取消（403 BOOKING_CLOSED）。",
           parameters: [
             {
               name: "id",
@@ -125,7 +128,7 @@ export function studentOpenApi(apiBaseUrl: string) {
             "204": { description: "已取消，沒有回應內容" },
             "401": errorRef("Unauthorized"),
             "403": errorResponse(
-              "NOT_OWNER：這筆預約不是你的；NOT_A_STUDENT：不是課堂金鑰；BOOKING_CLOSED：沒有堂課、已暫停或不在開放時間",
+              "NOT_OWNER：這筆預約不是你的；NOT_A_STUDENT：不是課堂金鑰；BOOKING_CLOSED：沒有堂課或已暫停",
             ),
             "404": errorResponse("NOT_FOUND：目前堂課沒有這筆預約"),
             "500": errorRef("InternalError"),
@@ -133,26 +136,54 @@ export function studentOpenApi(apiBaseUrl: string) {
           },
         },
       },
-      "/poster/copy": {
+      "/bookings/{id}/poster": {
         post: {
-          operationId: "writePosterCopy",
-          summary: "寫活動海報文案",
+          operationId: "writePoster",
+          summary: "把海報貼到我的一筆預約上",
           description:
-            "依活動名稱、時間、地點（與備註）產生海報文字：標題、時間地點、slogan、內文。只產生文字，不產生圖片；相同輸入得到相同結果。",
+            "你先寫好海報的活動名稱（title）與內文（body），再以 booking_id 貼到自己在目前堂課的一筆預約上，看板會顯示這張海報。" +
+            "海報的日期、時段、教室由後端從這筆預約帶入，不必也不能自己填。一筆預約只有一張海報，再貼一次會取代舊的；" +
+            "取消預約時海報一起消失。只能貼到自己的預約。堂課暫停時無法貼海報（403 BOOKING_CLOSED）。成功時回傳看板實際存下的海報。" +
+            `海報合格規則：活動名稱與內文去除前後空白後都不能是空的；內文 ${POSTER_BODY_MIN}–${POSTER_BODY_MAX} 字` +
+            "（去除前後空白後，以 Unicode 字元計算：中文字、英文字母、空白、標點與單一 emoji 各算 1 字；" +
+            "膚色、國旗、家庭等組合 emoji 由多個 Unicode 字元組成，會算成多個字）；" +
+            `活動名稱與內文都不能出現${POSTER_BANNED_WORDS.map((w) => `「${w}」`).join("、")}。` +
+            "不合格時回 400 INVALID_POSTER，message 會說明哪一條沒過，原本的海報不會被改動；請先自己檢查合格再貼。",
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              description: "要貼海報的預約編號（listMyBookings 或 bookSlot 回傳的 booking_id）",
+              schema: { type: "string", format: "uuid" },
+            },
+          ],
           requestBody: {
             required: true,
-            description: "活動資料",
+            description: "海報內容：活動名稱與內文",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/PosterCopyRequest" },
-                example: { title: "吉他社迎新", time: "12/9 13:00-14:00", place: "A101", notes: "自備撥片" },
+                schema: { $ref: "#/components/schemas/WritePosterRequest" },
+                example: {
+                  title: "吉他社迎新",
+                  body: "沒彈過吉他也沒關係！學長姐一對一帶你彈第一首歌，現場有吉他可以借，記得自備撥片。",
+                },
               },
             },
           },
           responses: {
-            "200": { description: "海報文案", content: json("PosterCopy") },
-            "400": errorResponse("INVALID_POSTER：缺少 title、time 或 place，或欄位不是文字"),
-            ...commonErrors,
+            "200": { description: "貼好的海報", content: json("Poster") },
+            "400": errorResponse(
+              "INVALID_POSTER：海報不合格（空白、內文字數不在範圍內或含禁用字），message 說明哪一條沒過；" +
+                "INVALID_REQUEST：請求內容不是 JSON，或 title、body 不是文字",
+            ),
+            "401": errorRef("Unauthorized"),
+            "403": errorResponse(
+              "NOT_OWNER：這筆預約不是你的；NOT_A_STUDENT：不是課堂金鑰；BOOKING_CLOSED：沒有堂課或已暫停",
+            ),
+            "404": errorResponse("NOT_FOUND：目前堂課沒有這筆預約"),
+            "500": errorRef("InternalError"),
+            "503": errorRef("RouterUnavailable"),
           },
         },
       },
@@ -168,7 +199,7 @@ export function studentOpenApi(apiBaseUrl: string) {
       responses: {
         Unauthorized: errorResponse("UNAUTHORIZED：沒有金鑰，或金鑰無效、已停用、課堂尚未開始、已過期"),
         Forbidden: errorResponse(
-          "NOT_A_STUDENT：這把金鑰不是學生的課堂金鑰；BOOKING_CLOSED：班級還沒有堂課（預約與取消另有：堂課已暫停、不在開放時間）",
+          "NOT_A_STUDENT：這把金鑰不是學生的課堂金鑰；BOOKING_CLOSED：班級還沒有堂課（預約、取消與貼海報另有：堂課已暫停）",
         ),
         InternalError: errorResponse("INTERNAL_ERROR：伺服器發生錯誤，請稍後再試"),
         RouterUnavailable: errorResponse("ROUTER_UNAVAILABLE：暫時無法確認身分，請稍後再試"),
@@ -230,8 +261,30 @@ export function studentOpenApi(apiBaseUrl: string) {
           required: ["session", "bookings"],
           properties: {
             session: { description: "目前堂課", allOf: [{ $ref: "#/components/schemas/Session" }] },
-            bookings: { type: "array", description: "我在目前堂課的預約", items: { $ref: "#/components/schemas/Booking" } },
+            bookings: { type: "array", description: "我在目前堂課的預約", items: { $ref: "#/components/schemas/MyBooking" } },
           },
+        },
+        MyBooking: {
+          description: "我的一筆預約，附上它的海報",
+          allOf: [
+            { $ref: "#/components/schemas/Booking" },
+            {
+              type: "object",
+              required: ["poster"],
+              properties: {
+                poster: {
+                  type: "object",
+                  nullable: true,
+                  description: "這筆預約上已貼的海報；還沒貼時為 null。日期、時段、教室就是這筆預約的",
+                  required: ["title", "body"],
+                  properties: {
+                    title: { type: "string", description: "活動名稱" },
+                    body: { type: "string", description: "海報內文" },
+                  },
+                },
+              },
+            },
+          ],
         },
         BookSlotRequest: {
           type: "object",
@@ -241,26 +294,27 @@ export function studentOpenApi(apiBaseUrl: string) {
             slot_id: { type: "string", description: "要預約的可借格代號（從 listSlots 取得）", example: SLOT_ID_EXAMPLE },
           },
         },
-        PosterCopyRequest: {
+        WritePosterRequest: {
           type: "object",
-          description: "海報的活動資料",
-          required: ["title", "time", "place"],
+          description: "海報內容；日期、時段、教室由後端從預約帶入",
+          required: ["title", "body"],
           properties: {
             title: { type: "string", description: "活動名稱", example: "吉他社迎新" },
-            time: { type: "string", description: "活動時間（自由格式）", example: "12/9 13:00-14:00" },
-            place: { type: "string", description: "活動地點", example: "A101" },
-            notes: { type: "string", nullable: true, description: "備註（可省略），會寫進內文" },
+            body: { type: "string", description: "海報內文" },
           },
         },
-        PosterCopy: {
+        Poster: {
           type: "object",
-          description: "海報文案（只有文字）",
-          required: ["title", "time_place", "slogan", "body"],
+          description: "貼在一筆預約上的海報，日期、時段、教室取自那筆預約",
+          required: ["booking_id", "title", "body", "date", "start", "end", "room"],
           properties: {
-            title: { type: "string", description: "標題" },
-            time_place: { type: "string", description: "時間地點，例如「12/9 13:00-14:00 @ A101」" },
-            slogan: { type: "string", description: "標語" },
-            body: { type: "string", description: "內文" },
+            booking_id: { type: "string", format: "uuid", description: "海報所屬的預約編號" },
+            title: { type: "string", description: "活動名稱" },
+            body: { type: "string", description: "海報內文" },
+            date: { type: "string", description: "日期 YYYY-MM-DD（取自預約）" },
+            start: { type: "string", description: "開始時間 HH:MM（取自預約）" },
+            end: { type: "string", description: "結束時間 HH:MM（取自預約）" },
+            room: { type: "string", description: "教室（取自預約）" },
           },
         },
         Error: {
@@ -272,9 +326,9 @@ export function studentOpenApi(apiBaseUrl: string) {
               type: "string",
               enum: [...STUDENT_ERROR_CODES],
               description:
-                "錯誤代碼：UNAUTHORIZED 金鑰無效或過期；NOT_A_STUDENT 不是學生的課堂金鑰；BOOKING_CLOSED 沒有堂課、已暫停或不在開放時間；" +
+                "錯誤代碼：UNAUTHORIZED 金鑰無效或過期；NOT_A_STUDENT 不是學生的課堂金鑰；BOOKING_CLOSED 沒有堂課或已暫停；" +
                 "ROUTER_UNAVAILABLE 暫時無法確認身分；SLOT_TAKEN 可借格已被預約；INVALID_SLOT 沒有這個可借格；NOT_OWNER 不是自己的預約；" +
-                "NOT_FOUND 找不到預約；LIMIT_REACHED 已達每人上限；INVALID_POSTER 海報資料不完整；INVALID_REQUEST 請求格式錯誤；INTERNAL_ERROR 伺服器錯誤",
+                "NOT_FOUND 找不到預約；LIMIT_REACHED 已達每人上限；INVALID_POSTER 海報不合格；INVALID_REQUEST 請求格式錯誤；INTERNAL_ERROR 伺服器錯誤",
             },
             message: { type: "string", description: "給學生看的中文說明，可直接轉述" },
           },

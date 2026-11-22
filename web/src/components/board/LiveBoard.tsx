@@ -36,6 +36,8 @@ export type LiveBoardProps = {
   onFollowChange?: (follow: boolean) => void;
   /** Extra left-column content (teacher-only switches and links). */
   controls?: ReactNode;
+  /** Teacher-only control under each 日展開 cell (e.g. 設保留／解除保留); `refresh` re-polls now. */
+  cellAction?: (slot: BoardSlot, refresh: () => void) => ReactNode;
   /** Called when the source answers 401 (the monitor sends the teacher to the 首頁). */
   onUnauthorized?: () => void;
   /** Called (and polling stops) when the source answers 404 (the 分享連結 expired or was closed). */
@@ -55,6 +57,7 @@ export function LiveBoard({
   initialFollow = false,
   onFollowChange,
   controls,
+  cellAction,
   onUnauthorized,
   onNotFound,
 }: LiveBoardProps) {
@@ -74,6 +77,7 @@ export function LiveBoard({
   const navigated = useRef(false);
   const seq = useRef(0);
   const unauthorizedRef = useRef(onUnauthorized);
+  const pollNowRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     unauthorizedRef.current = onUnauthorized;
@@ -124,7 +128,15 @@ export function LiveBoard({
       }
     };
 
+    let inFlight = false;
+    pollNowRef.current = () => {
+      if (stopped || inFlight) return;
+      clearTimeout(timer);
+      void tick();
+    };
+
     const tick = async () => {
+      inFlight = true;
       try {
         const res = await fetch(source, { cache: "no-store", signal: abort.signal });
         if (stopped) return;
@@ -145,7 +157,10 @@ export function LiveBoard({
       } catch {
         if (stopped) return;
         setError("連線中斷，稍後自動重試");
+      } finally {
+        inFlight = false;
       }
+      if (stopped) return;
       timer = setTimeout(tick, pollMs);
     };
     void tick();
@@ -260,6 +275,7 @@ export function LiveBoard({
           chip={chip}
           flash={flash}
           loading={!snap}
+          cellAction={cellAction ? (slot) => cellAction(slot, () => pollNowRef.current()) : undefined}
         />
 
         {snap?.roster ? <RosterProgress roster={snap.roster} chip={chip} /> : null}
@@ -341,6 +357,7 @@ function DayMatrix({
   chip,
   flash,
   loading,
+  cellAction,
 }: {
   slots: BoardSlot[];
   selected: string | null;
@@ -348,6 +365,7 @@ function DayMatrix({
   chip: (room: string) => CSSProperties;
   flash: { ids: Set<string>; key: number } | null;
   loading: boolean;
+  cellAction?: (slot: BoardSlot) => ReactNode;
 }) {
   if (loading) return <div className={`${s.card} ${s.empty} ${s.muted}`}>載入看板…</div>;
   const day = selected ? dayExpandSlots(slots, selected) : [];
@@ -360,8 +378,6 @@ function DayMatrix({
   }
   const times = [...new Map(day.map((x) => [`${x.start}–${x.end}`, x])).keys()];
   const dayRooms = rooms.filter((r) => day.some((x) => x.room === r));
-  const slotIdOf = (x: { start: string; end: string; room: string }) =>
-    `${selected}_${x.start}-${x.end}_${x.room}`;
   return (
     <div className={`${s.card} ${s.matrixWrap}`}>
       <table className={s.matrix}>
@@ -392,15 +408,24 @@ function DayMatrix({
                     </td>
                   );
                 }
-                const isNew = flash?.ids.has(slotIdOf(x)) ?? false;
+                const isNew = flash?.ids.has(x.slot_id) ?? false;
+                const held = x.held === true;
                 return (
                   <td
                     key={isNew ? `${r}-${flash?.key}` : r}
-                    className={`${s.cell} ${x.status === "open" ? s.cellOpen : s.cellBooked} ${isNew ? s.flash : ""}`}
+                    className={`${s.cell} ${x.status === "open" ? s.cellOpen : s.cellBooked} ${held ? s.cellHeld : ""} ${isNew ? s.flash : ""}`}
                     style={chip(r)}
                   >
+                    {held ? <span className={s.heldTag}>教師保留</span> : null}
                     {x.status === "open" ? "可借" : x.booked_by}
+                    {x.poster ? (
+                      <div className={s.poster} title={`${x.poster.title}\n\n${x.poster.body}`}>
+                        <strong className={s.posterTitle}>{x.poster.title}</strong>
+                        <span className={s.posterBody}>{x.poster.body}</span>
+                      </div>
+                    ) : null}
                     {isNew ? <span className={s.newBadge}>剛預約！</span> : null}
+                    {cellAction?.(x)}
                   </td>
                 );
               })}

@@ -398,6 +398,17 @@
   opacity: 0.5;
   cursor: wait;
 }
+.dialog {
+  width: min(360px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--foreground);
+}
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
 .flash {
   animation: pop 1.2s ease-out;
 }

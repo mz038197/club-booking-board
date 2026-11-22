@@ -7,6 +7,8 @@ import { LiveBoard } from "@/components/board/LiveBoard";
 import s from "@/components/board/board.module.css";
 import { LOGIN_REQUIRED_PATH } from "@/auth/login-paths";
 import type { BoardSlot } from "@/board/types";
+import { cellDialogFor, type CellAction, type CellDialog as CellDialogContent } from "@/board/cell-dialog";
+import { CellDialog } from "@/components/board/CellDialog";
 
 /**
  * The 投影監看頁: the live board on the monitor endpoint, plus the teacher-only
@@ -70,83 +72,86 @@ export function MonitorBoard({
     }
   };
 
-  /** 設保留 (asks for the optional name) or 解除保留 on one 可借格 of the 日展開. */
-  const toggleHold = async (slot: BoardSlot, refresh: () => void) => {
-    let init: RequestInit;
-    if (slot.held) {
-      if (!window.confirm(`解除 ${slot.room} ${slot.start}–${slot.end} 的保留？學生就能預約這一格。`)) return;
-      init = { method: "DELETE" };
-    } else {
-      const name = window.prompt(`保留 ${slot.room} ${slot.start}–${slot.end}\n學生看到的名字（20 字以內，空白顯示「保留」）`, "");
-      if (name === null) return;
-      init = { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) };
-    }
-    await sendCellAction(slot, "hold", init, "保留", refresh);
-  };
+  /** The 日展開 cell whose action waits in the in-page dialog. */
+  const [pending, setPending] = useState<{ slot: BoardSlot; dialog: CellDialogContent; refresh: () => void } | null>(
+    null,
+  );
 
-  /** 刪除海報 on a 預約 of the 日展開; the 預約 itself stays. */
-  const deletePoster = async (slot: BoardSlot, refresh: () => void) => {
-    const title = slot.poster?.title ?? "";
-    if (!window.confirm(`刪除 ${slot.room} ${slot.start}–${slot.end} 的海報「${title}」？預約會保留。`)) return;
-    await sendCellAction(slot, "poster", { method: "DELETE" }, "刪除海報", refresh);
+  /** Runs a confirmed 設保留 (with the optional name)／解除保留／刪除海報 (the 預約 stays). */
+  const runCellAction = (slot: BoardSlot, action: CellAction, name: string, refresh: () => void) => {
+    switch (action) {
+      case "setHold": {
+        const init = { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) };
+        return sendCellAction(slot, "hold", init, "保留", refresh);
+      }
+      case "releaseHold":
+        return sendCellAction(slot, "hold", { method: "DELETE" }, "保留", refresh);
+      case "deletePoster":
+        return sendCellAction(slot, "poster", { method: "DELETE" }, "刪除海報", refresh);
+    }
   };
 
   return (
-    <LiveBoard
-      source={`/api/teacher/sessions/${sessionId}/monitor`}
-      initialFollow={initialFollow}
-      onFollowChange={(follow) => void save({ auto_follow: follow })}
-      onUnauthorized={toLogin}
-      cellAction={(slot, refresh) =>
-        slot.status === "open" || slot.held ? (
-          <button
-            type="button"
-            className={s.cellAction}
-            disabled={cellBusy === slot.slot_id}
-            onClick={() => void toggleHold(slot, refresh)}
-          >
-            {slot.held ? "解除保留" : "設保留"}
-          </button>
-        ) : slot.poster ? (
-          <button
-            type="button"
-            className={s.cellAction}
-            disabled={cellBusy === slot.slot_id}
-            onClick={() => void deletePoster(slot, refresh)}
-          >
-            刪除海報
-          </button>
-        ) : null
-      }
-      controls={
-        <>
-          {cellError ? (
-            <p role="alert" style={{ margin: 0, fontSize: 12, color: "var(--danger)" }}>
-              {cellError}
-            </p>
-          ) : null}
-          <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--muted-fg)", cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={mask}
-              onChange={async (e) => {
-                const next = e.target.checked;
-                setMask(next);
-                if (!(await save({ mask_names: next }))) setMask(!next);
-              }}
-            />
-            遮蔽顯示名稱（王小明 → 王○明）
-          </label>
-          {saveError ? (
-            <p role="alert" style={{ margin: 0, fontSize: 12, color: "var(--danger)" }}>
-              設定沒有儲存，請再試一次
-            </p>
-          ) : null}
-          <Link href={`/admin/classes/${classId}`} style={{ fontSize: 12, color: "var(--muted-fg)" }}>
-            ← 回到教師後台
-          </Link>
-        </>
-      }
-    />
+    <>
+      {pending ? (
+        <CellDialog
+          content={pending.dialog}
+          onClose={() => setPending(null)}
+          onConfirm={(name) => {
+            const { slot, dialog, refresh } = pending;
+            setPending(null);
+            void runCellAction(slot, dialog.action, name, refresh);
+          }}
+        />
+      ) : null}
+      <LiveBoard
+        source={`/api/teacher/sessions/${sessionId}/monitor`}
+        initialFollow={initialFollow}
+        onFollowChange={(follow) => void save({ auto_follow: follow })}
+        onUnauthorized={toLogin}
+        cellAction={(slot, refresh) => {
+          const dialog = cellDialogFor(slot);
+          return dialog ? (
+            <button
+              type="button"
+              className={s.cellAction}
+              disabled={cellBusy === slot.slot_id}
+              onClick={() => setPending({ slot, dialog, refresh })}
+            >
+              {dialog.confirmLabel}
+            </button>
+          ) : null;
+        }}
+        controls={
+          <>
+            {cellError ? (
+              <p role="alert" style={{ margin: 0, fontSize: 12, color: "var(--danger)" }}>
+                {cellError}
+              </p>
+            ) : null}
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--muted-fg)", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={mask}
+                onChange={async (e) => {
+                  const next = e.target.checked;
+                  setMask(next);
+                  if (!(await save({ mask_names: next }))) setMask(!next);
+                }}
+              />
+              遮蔽顯示名稱（王小明 → 王○明）
+            </label>
+            {saveError ? (
+              <p role="alert" style={{ margin: 0, fontSize: 12, color: "var(--danger)" }}>
+                設定沒有儲存，請再試一次
+              </p>
+            ) : null}
+            <Link href={`/admin/classes/${classId}`} style={{ fontSize: 12, color: "var(--muted-fg)" }}>
+              ← 回到教師後台
+            </Link>
+          </>
+        }
+      />
+    </>
   );
 }

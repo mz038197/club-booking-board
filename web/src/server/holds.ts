@@ -1,5 +1,6 @@
 import type { Db } from "./db";
 import { ApiError } from "./http/errors";
+import { MAX_HOLD_NAME_LENGTH } from "@/board/cell-dialog";
 
 /**
  * 教師保留 (ADR 0006): a teacher's setting on a 可借格. Students and agents see the
@@ -8,7 +9,6 @@ import { ApiError } from "./http/errors";
 
 /** What students see as the booker when the teacher gave no name. */
 export const DEFAULT_HOLD_NAME = "保留";
-export const MAX_HOLD_NAME_LENGTH = 20;
 
 /** Validates the optional 保留 name; blank → null (shown as 「保留」). 400 INVALID_REQUEST otherwise. */
 export function parseHoldName(body: Record<string, unknown>): string | null {

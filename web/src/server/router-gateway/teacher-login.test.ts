@@ -119,6 +119,8 @@ describe("router gateway completeTeacherLogin", () => {
 
     const tokenCall = router.calls.find((c) => c.url === `${ROUTER}/oauth/token`)!;
     expect(new URLSearchParams(String(tokenCall.init.body)).get("client_secret")).toBe("club-client-secret");
+    // A followed 307/308 would resend the secret to wherever the redirect points.
+    expect(tokenCall.init.redirect).toBe("error");
   });
 
   it("sends no client_secret field when none is configured", async () => {

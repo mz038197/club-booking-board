@@ -188,6 +188,7 @@ export function createRouterGateway(options: RouterGatewayOptions): RouterGatewa
 
       const token = await exchange(tokenEndpoint, {
         method: "POST",
+        redirect: "error", // the body carries the client secret
         headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
         body: new URLSearchParams({
           grant_type: "authorization_code",

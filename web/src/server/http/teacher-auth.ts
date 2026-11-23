@@ -20,27 +20,37 @@ export type TeacherAccess = {
 
 const MIN_SECRET_LENGTH = 32;
 
-function hmac(data: string, secret: string): Buffer {
+/** Each cookie kind signs with its own key derived from the one secret, so they cannot be swapped. */
+export const TEACHER_COOKIE_PURPOSE = "club-teacher-cookie";
+export const LOGIN_COOKIE_PURPOSE = "club-login-cookie";
+export type CookiePurpose = typeof TEACHER_COOKIE_PURPOSE | typeof LOGIN_COOKIE_PURPOSE;
+
+function signature(data: string, secret: string, purpose: CookiePurpose): Buffer {
   if (secret.length < MIN_SECRET_LENGTH) {
-    throw new Error(`TEACHER_SESSION_SECRET must be set (at least ${MIN_SECRET_LENGTH} characters).`);
+    throw new Error(`CLUB_TEACHER_COOKIE_SECRET must be set (at least ${MIN_SECRET_LENGTH} characters).`);
   }
-  return createHmac("sha256", secret).update(data).digest();
+  const key = createHmac("sha256", secret).update(purpose).digest();
+  return createHmac("sha256", key).update(data).digest();
 }
 
-/** `payload.signature`, both base64url. Used for the session and the login cookie. */
-export function seal(payload: Record<string, unknown>, secret: string): string {
+/** `payload.signature`, both base64url, signed with the key of this cookie kind. */
+export function seal(payload: Record<string, unknown>, secret: string, purpose: CookiePurpose): string {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `${body}.${hmac(body, secret).toString("base64url")}`;
+  return `${body}.${signature(body, secret, purpose).toString("base64url")}`;
 }
 
-/** The payload of a value made by `seal` with the same secret, or `null`. */
-export function unseal(value: string | undefined, secret: string): Record<string, unknown> | null {
+/** The payload of a value made by `seal` with the same secret and purpose, or `null`. */
+export function unseal(
+  value: string | undefined,
+  secret: string,
+  purpose: CookiePurpose,
+): Record<string, unknown> | null {
   if (!value) return null;
   const dot = value.indexOf(".");
   if (dot <= 0) return null;
   const body = value.slice(0, dot);
   const given = Buffer.from(value.slice(dot + 1), "base64url");
-  const expected = hmac(body, secret);
+  const expected = signature(body, secret, purpose);
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
   try {
     const payload: unknown = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
@@ -53,12 +63,12 @@ export function unseal(value: string | undefined, secret: string): Record<string
 /** The session cookie value for a teacher who just signed in at `issuedAt` (valid 12 hours). */
 export function signTeacherSession(teacher: Teacher, secret: string, issuedAt: Date): string {
   const exp = Math.floor(issuedAt.getTime() / 1000) + TEACHER_SESSION_SECONDS;
-  return seal({ uid: teacher.userId, name: teacher.displayName, exp }, secret);
+  return seal({ uid: teacher.userId, name: teacher.displayName, exp }, secret, TEACHER_COOKIE_PURPOSE);
 }
 
 /** The signed-in teacher, or `null` when the cookie is missing, forged or expired. */
 export function readTeacherSession(value: string | undefined, secret: string, now: Date): Teacher | null {
-  const claims = unseal(value, secret);
+  const claims = unseal(value, secret, TEACHER_COOKIE_PURPOSE);
   if (!claims) return null;
   const { uid, name, exp } = claims;
   if (typeof uid !== "number" || !Number.isInteger(uid) || typeof name !== "string") return null;

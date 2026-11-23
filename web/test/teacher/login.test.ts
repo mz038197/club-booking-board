@@ -1,4 +1,12 @@
+import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  LOGIN_COOKIE_PURPOSE,
+  readTeacherSession,
+  seal,
+  TEACHER_COOKIE_PURPOSE,
+  unseal,
+} from "@/server/http/teacher-auth";
 import { FAKE_TEACHERS, fakeApproveLogin } from "@/server/router-gateway/fake";
 import { setupTestApp, type TestApp } from "../helpers/app";
 import { setCookies } from "../helpers/teacher";
@@ -110,6 +118,44 @@ describe("teacher login through the router", () => {
 
     const res = await app.request("GET", `/auth/callback?error=access_denied&state=${state}`, {
       cookies: loginCookie,
+    });
+
+    expectLoginFailed(res);
+  });
+});
+
+describe("the two teacher cookies cannot stand in for each other", () => {
+  const teacherClaims = () => ({ uid: 42, name: "林老師", exp: Math.floor(app.deps.now().getTime() / 1000) + 60 });
+
+  it("refuses a teacher-shaped value signed as a login cookie", () => {
+    const value = seal(teacherClaims(), app.deps.sessionSecret, LOGIN_COOKIE_PURPOSE);
+
+    expect(readTeacherSession(value, app.deps.sessionSecret, app.deps.now())).toBeNull();
+  });
+
+  it("accepts the same value signed as a teacher cookie", () => {
+    const value = seal(teacherClaims(), app.deps.sessionSecret, TEACHER_COOKIE_PURPOSE);
+
+    expect(readTeacherSession(value, app.deps.sessionSecret, app.deps.now())).toEqual({
+      userId: 42,
+      displayName: "林老師",
+    });
+  });
+
+  it("refuses a teacher cookie signed directly with the secret, as before key separation", () => {
+    const body = Buffer.from(JSON.stringify(teacherClaims())).toString("base64url");
+    const signature = createHmac("sha256", app.deps.sessionSecret).update(body).digest("base64url");
+
+    expect(readTeacherSession(`${body}.${signature}`, app.deps.sessionSecret, app.deps.now())).toBeNull();
+  });
+
+  it("fails the callback when the login cookie was signed as a teacher cookie", async () => {
+    const { authorizeUrl, loginCookie } = await startLogin();
+    const pending = unseal(loginCookie.cbb_teacher_login, app.deps.sessionSecret, LOGIN_COOKIE_PURPOSE)!;
+    const swapped = seal(pending, app.deps.sessionSecret, TEACHER_COOKIE_PURPOSE);
+
+    const res = await callback(fakeApproveLogin(authorizeUrl, FAKE_TEACHERS.teacher.userId), {
+      cbb_teacher_login: swapped,
     });
 
     expectLoginFailed(res);

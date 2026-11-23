@@ -16,5 +16,6 @@ export function gatewayFromEnv(env: Env): RouterGateway {
     routerUrl: env.ROUTER_URL,
     serviceCredential: env.ROUTER_SERVICE_CREDENTIAL,
     oauthClientId: env.ROUTER_OAUTH_CLIENT_ID || undefined,
+    oauthClientSecret: env.ROUTER_OAUTH_CLIENT_SECRET?.trim() || undefined,
   });
 }

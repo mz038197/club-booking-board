@@ -3,6 +3,7 @@ import { ADMIN_PATH, HOME_PATH, type LoginError } from "@/auth/login-paths";
 import type { Deps } from "../deps";
 import {
   cookieLine,
+  LOGIN_COOKIE_PURPOSE,
   readCookie,
   seal,
   teacherSessionCookie,
@@ -29,7 +30,7 @@ export function startTeacherLogin(req: Request, deps: Deps): Response {
   const verifier = randomBytes(32).toString("base64url");
   const codeChallenge = createHash("sha256").update(verifier).digest("base64url");
   const exp = Math.floor(deps.now().getTime() / 1000) + LOGIN_SECONDS;
-  const loginCookie = cookieLine(LOGIN_COOKIE, seal({ state, verifier, exp }, deps.sessionSecret), {
+  const loginCookie = cookieLine(LOGIN_COOKIE, seal({ state, verifier, exp }, deps.sessionSecret, LOGIN_COOKIE_PURPOSE), {
     maxAge: LOGIN_SECONDS,
     path: LOGIN_COOKIE_PATH,
   });
@@ -53,7 +54,7 @@ export async function finishTeacherLogin(req: Request, deps: Deps): Promise<Resp
     return redirect(to, [clearLoginCookie()]);
   };
 
-  const pending = unseal(readCookie(req, LOGIN_COOKIE), deps.sessionSecret);
+  const pending = unseal(readCookie(req, LOGIN_COOKIE), deps.sessionSecret, LOGIN_COOKIE_PURPOSE);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (

@@ -104,6 +104,32 @@ describe("router gateway teacherLoginUrl", () => {
 });
 
 describe("router gateway completeTeacherLogin", () => {
+  it("presents the OAuth client secret when exchanging the code", async () => {
+    const router = oidcRouter(tokenWith(idToken(goodClaims)));
+    const gateway = createRouterGateway({
+      routerUrl: ROUTER,
+      serviceCredential: "svc-secret",
+      oauthClientSecret: "club-client-secret",
+      fetch: router.fetchFn,
+      now: () => NOW_MS,
+      log: () => {},
+    });
+
+    await gateway.completeTeacherLogin(finish);
+
+    const tokenCall = router.calls.find((c) => c.url === `${ROUTER}/oauth/token`)!;
+    expect(new URLSearchParams(String(tokenCall.init.body)).get("client_secret")).toBe("club-client-secret");
+  });
+
+  it("sends no client_secret field when none is configured", async () => {
+    const router = oidcRouter(tokenWith(idToken(goodClaims)));
+
+    await gatewayFor(router.fetchFn).completeTeacherLogin(finish);
+
+    const tokenCall = router.calls.find((c) => c.url === `${ROUTER}/oauth/token`)!;
+    expect(new URLSearchParams(String(tokenCall.init.body)).has("client_secret")).toBe(false);
+  });
+
   it("exchanges the code with the PKCE verifier and returns the teacher from a valid ID token", async () => {
     const router = oidcRouter(tokenWith(idToken(goodClaims)));
 

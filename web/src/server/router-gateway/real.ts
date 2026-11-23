@@ -32,6 +32,8 @@ export type RouterGatewayOptions = {
   serviceCredential: string;
   /** OAuth Client id of the teacher admin; defaults to `club-booking-admin`. */
   oauthClientId?: string;
+  /** Secret of that OAuth Client, presented when exchanging a code. Never logged. */
+  oauthClientSecret?: string;
   fetch?: typeof fetch;
   /** Milliseconds; injectable so cache expiry can be tested. */
   now?: () => number;
@@ -193,6 +195,7 @@ export function createRouterGateway(options: RouterGatewayOptions): RouterGatewa
           redirect_uri: redirectUri,
           client_id: clientId,
           code_verifier: codeVerifier,
+          ...(options.oauthClientSecret ? { client_secret: options.oauthClientSecret } : {}),
         }).toString(),
       });
       if ("failure" in token) return unavailable(`token: ${token.failure}`);

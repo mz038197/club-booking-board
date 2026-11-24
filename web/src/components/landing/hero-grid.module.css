@@ -1,0 +1,81 @@
+/* 首頁 hero background (HeroGrid): faint grid + flashing 教室色 cells. Colors only via tokens. */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 30 × 64px columns, centered; lines fade out toward the edges */
+.plane {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1920px;
+  transform: translateX(-50%);
+  background-image:
+    linear-gradient(to right, var(--hero-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--hero-grid) 1px, transparent 1px);
+  background-size: 64px 64px;
+  /* mask alpha only (never painted), so a raw value rather than a token */
+  mask-image: radial-gradient(ellipse 75% 90% at 50% 40%, #000 50%, transparent 100%);
+}
+
+/* melt into --hero-bg at the bottom */
+.fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160px;
+  background: linear-gradient(to bottom, transparent, var(--hero-bg));
+}
+
+/* duration and delay come per cell from HeroGrid */
+.cell {
+  position: absolute;
+  width: 63px;
+  height: 63px;
+  border-radius: 4px;
+  opacity: 0.45;
+  animation-iteration-count: infinite;
+}
+.breathe {
+  animation-name: breathe;
+  animation-timing-function: ease-in-out;
+}
+.blink {
+  animation-name: blink;
+  animation-timing-function: ease-out;
+}
+.flicker {
+  animation-name: flicker;
+  animation-timing-function: linear;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.8; }
+}
+/* mostly dim, one quick bright flash */
+@keyframes blink {
+  0%, 62%, 100% { opacity: 0.08; }
+  68% { opacity: 0.85; }
+  82% { opacity: 0.3; }
+}
+/* uneven double flash */
+@keyframes flicker {
+  0%, 30%, 100% { opacity: 0.1; }
+  36% { opacity: 0.7; }
+  42% { opacity: 0.2; }
+  50% { opacity: 0.85; }
+  70% { opacity: 0.15; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell {
+    animation: none;
+  }
+}

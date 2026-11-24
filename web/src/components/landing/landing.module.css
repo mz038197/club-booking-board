@@ -1,7 +1,12 @@
-/* 首頁 (landing): dark top bar + hero, floating 看板 preview, three steps. Colors only via tokens (globals.css). */
+/*
+ * 首頁 (landing): dark top bar, hero (text beside the 看板 preview, over HeroGrid), steps strip.
+ * On a desktop screen it fits without scrolling. Colors only via tokens (globals.css).
+ */
 
 .page {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--background);
 }
 
@@ -76,8 +81,7 @@
 }
 
 /* buttons on the dark band */
-.btnLight,
-.btnGhost {
+.btnLight {
   display: inline-block;
   border-radius: 6px;
   font-size: 14px;
@@ -89,11 +93,6 @@
   background: var(--hero-fg);
   color: var(--hero-bg);
   border: 1px solid var(--hero-fg);
-}
-.btnGhost {
-  background: transparent;
-  color: var(--hero-fg);
-  border: 1px solid var(--hero-border);
 }
 .btnLarge {
   padding: 12px 20px;
@@ -119,57 +118,55 @@
   font-weight: 600;
 }
 
-/* hero */
+/* hero: fills what the bar and steps leave */
 .hero {
+  flex: 1;
+  display: flex;
+  align-items: center;
   background: var(--hero-bg);
   color: var(--hero-fg);
-  padding: 88px 0 120px;
-  text-align: center;
+  padding: clamp(32px, 7vh, 72px) 0;
+  position: relative;
+  overflow: hidden;
 }
-.eyebrow {
-  display: inline-block;
-  border: 1px solid var(--hero-border);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 13px;
-  color: var(--hero-muted);
-  margin: 0 0 20px;
+.heroInner {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 48px;
+  align-items: center;
+}
+.heroText {
+  min-width: 0;
 }
 .title {
-  font-size: clamp(32px, 6vw, 56px);
+  font-size: clamp(32px, min(5vw, 7vh), 52px);
   line-height: 1.1;
   letter-spacing: -1px;
-  margin: 0 0 16px;
-}
-.lede {
-  font-size: 18px;
-  color: var(--hero-muted);
-  max-width: 560px;
-  margin: 0 auto 32px;
-  line-height: 1.6;
+  margin: 0 0 28px;
 }
 .actions {
   display: flex;
   gap: 12px;
-  justify-content: center;
   flex-wrap: wrap;
 }
 .loginHint {
   font-size: 13px;
   color: var(--hero-muted);
-  margin: 16px 0 0;
+  margin: 12px 0 0;
 }
 
-/* floating 看板 preview */
-.preview {
-  margin-top: -72px;
-}
+/* 看板 preview, beside the hero text */
 .previewCard {
+  min-width: 0;
+  color: var(--foreground);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--shadow-float);
-  padding: 16px;
+  padding: 12px;
 }
 .previewHead {
   display: flex;
@@ -185,11 +182,11 @@
   border-collapse: separate;
   border-spacing: 4px;
   width: 100%;
-  min-width: 420px;
+  min-width: 360px;
 }
 .board th,
 .board td {
-  padding: 8px 6px;
+  padding: 7px 6px;
   font-size: 12px;
   border-radius: 6px;
   text-align: center;
@@ -213,25 +210,47 @@
 
 /* three steps */
 .steps {
-  padding: 72px 16px 96px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 24px 16px 28px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 24px;
 }
 .stepNo {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted-fg);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .stepTitle {
-  margin: 0 0 6px;
-  font-size: 17px;
+  margin: 0 0 4px;
+  font-size: 16px;
 }
 .stepBody {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.55;
   color: var(--muted-fg);
+}
+
+/* tall enough desktop screens: exactly one screen, no scroll */
+@media (min-width: 900px) and (min-height: 600px) {
+  .page {
+    height: 100dvh;
+    min-height: 0;
+  }
+}
+
+/* narrow: stack text above the preview, centered; scrolling is fine here */
+@media (max-width: 899px) {
+  .heroInner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    text-align: center;
+  }
+  .actions {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 560px) {
@@ -240,8 +259,5 @@
   }
   .cornerName {
     display: none;
-  }
-  .hero {
-    padding: 56px 0 104px;
   }
 }

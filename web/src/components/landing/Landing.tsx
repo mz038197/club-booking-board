@@ -1,11 +1,14 @@
 import { LOGIN_REQUIRED_NOTICE } from "@/server/http/teacher-auth";
 import { ADMIN_PATH, LOGIN_START_PATH, type LoginError } from "@/auth/login-paths";
+import { HeroGrid } from "./HeroGrid";
 import s from "./landing.module.css";
 
 /**
- * The 首頁. Signed out: 「登入」 top right and in the hero, both going straight to
- * the router's login page (the only login page). Signed in: the teacher's 顯示名稱
- * and 「進入後台」. A failed login or a signed-out teacher page lands here with a banner.
+ * The 首頁, sized to fit one desktop screen: top bar, hero (title and login beside the
+ * 看板 preview, over HeroGrid), three steps. Signed out: 「登入」 top right and in the hero,
+ * both going straight to the router's login page (the only login page). Signed in: the
+ * teacher's 顯示名稱 and 「進入後台」. A failed login or a signed-out teacher page lands
+ * here with a banner.
  */
 export type LandingProps = {
   /** The signed-in teacher's 顯示名稱, or null when signed out. */
@@ -52,35 +55,32 @@ export function Landing({ teacherName, error, loginRequired }: LandingProps) {
       <Banner error={error} showLoginRequired={loginRequired && !teacherName} />
 
       <section className={s.hero}>
-        <div className={s.wrap}>
-          <p className={s.eyebrow}>台南一中 · Agent 實作</p>
-          <h1 className={s.title}>
-            讓你的 Agent
-            <br />
-            幫社團借教室
-          </h1>
-          <p className={s.lede}>學生用課堂金鑰呼叫 API 或 MCP 預約可借格，結果即時出現在投影看板上。</p>
-          <div className={s.actions}>
-            {teacherName ? (
-              <a href={ADMIN_PATH} className={`${s.btnLight} ${s.btnLarge}`}>進入後台 →</a>
-            ) : (
-              <a href={LOGIN_START_PATH} className={`${s.btnLight} ${s.btnLarge}`}>用 VansCoding 帳號登入</a>
+        <HeroGrid />
+        <div className={`${s.wrap} ${s.heroInner}`}>
+          <div className={s.heroText}>
+            <h1 className={s.title}>
+              讓你的 Agent
+              <br />
+              幫社團借教室
+            </h1>
+            <div className={s.actions}>
+              {teacherName ? (
+                <a href={ADMIN_PATH} className={`${s.btnLight} ${s.btnLarge}`}>進入後台 →</a>
+              ) : (
+                <a href={LOGIN_START_PATH} className={`${s.btnLight} ${s.btnLarge}`}>用 VansCoding 帳號登入</a>
+              )}
+            </div>
+            {teacherName ? null : (
+              <p className={s.loginHint}>教師登入會前往 VansCoding 登入頁，以 Google 帳號登入。</p>
             )}
-            <a href="#how" className={`${s.btnGhost} ${s.btnLarge}`}>學生怎麼開始</a>
           </div>
-          {teacherName ? null : (
-            <p className={s.loginHint}>教師登入會前往 VansCoding 登入頁，以 Google 帳號登入。</p>
-          )}
-        </div>
-      </section>
-
-      <section className={`${s.wrap} ${s.preview}`}>
-        <div className={s.previewCard}>
-          <div className={s.previewHead}>
-            <span>投影看板預覽</span>
-            <span>示範資料</span>
+          <div className={s.previewCard}>
+            <div className={s.previewHead}>
+              <span>投影看板預覽</span>
+              <span>示範資料</span>
+            </div>
+            <DemoBoard />
           </div>
-          <DemoBoard />
         </div>
       </section>
 

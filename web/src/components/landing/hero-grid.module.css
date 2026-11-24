@@ -19,6 +19,7 @@
     linear-gradient(to right, var(--hero-grid) 1px, transparent 1px),
     linear-gradient(to bottom, var(--hero-grid) 1px, transparent 1px);
   background-size: 64px 64px;
+  /* mask alpha only (never painted), so a raw value rather than a token */
   mask-image: radial-gradient(ellipse 75% 90% at 50% 40%, #000 50%, transparent 100%);
 }
 
